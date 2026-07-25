@@ -100,4 +100,15 @@ async def get_current_user(
     return payload
 
 
+def verify_token(token: str) -> dict[str, Any] | None:
+    """Versión no-raising de decode_token para uso en WebSocket. Retorna None si inválido."""
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[_ALGORITHM])
+        if payload.get("type") != "access":
+            return None
+        return payload
+    except JWTError:
+        return None
+
+
 ACCESS_TOKEN_EXPIRE_SECONDS = _ACCESS_TOKEN_EXPIRE_MINUTES * 60

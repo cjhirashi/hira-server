@@ -16,6 +16,8 @@ from routers.monitor import router as monitor_router
 from routers.points import router as points_router
 from routers.simulators import router as simulators_router
 from routers.users import router as users_router
+from routers.ws import router as ws_router
+from websocket.redis_subscriber import start_subscriber, stop_subscriber
 
 logger = get_logger(__name__)
 
@@ -65,7 +67,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         },
     )
     await _seed_admin()
+    start_subscriber()
     yield
+    stop_subscriber()
     await close_redis()
     logger.info("Hira backend apagándose")
 
@@ -96,3 +100,4 @@ app.include_router(users_router)
 app.include_router(devices_router, prefix="/api/v1")
 app.include_router(points_router, prefix="/api/v1")
 app.include_router(simulators_router, prefix="/api/v1")
+app.include_router(ws_router)

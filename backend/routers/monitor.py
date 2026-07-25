@@ -62,6 +62,8 @@ async def get_health() -> JSONResponse:
         _check_mosquitto(),
     )
 
+    from websocket.manager import manager as ws_manager
+
     services = {
         "postgres": postgres_status,
         "redis": redis_status,
@@ -73,6 +75,7 @@ async def get_health() -> JSONResponse:
     body = {
         "status": overall,
         "services": services,
+        "websocket_clients": ws_manager.client_count,
         "version": VERSION,
         "trace_id": trace_id,
     }
