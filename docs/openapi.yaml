@@ -1,0 +1,130 @@
+openapi: 3.1.0
+
+info:
+  title: Hira API
+  version: 0.0.1-skeleton
+  description: |
+    API de Hira — plataforma SCADA para integradores de automatización de edificios.
+
+    ## Contract-First
+    Este archivo es el contrato de la API. Se define **antes** de implementar
+    cualquier router. Los endpoints de cada sprint se añaden aquí al inicio
+    del sprint, antes de escribir código.
+
+    ## Trace ID
+    Todos los requests devuelven el header `X-Trace-ID`. Si el cliente lo envía
+    en el request, se reutiliza; si no, se genera un UUID nuevo. Todos los logs
+    del backend incluyen el mismo `trace_id` para trazabilidad end-to-end.
+
+servers:
+  - url: /api
+    description: API (vía Nginx reverse proxy)
+  - url: http://localhost:8000
+    description: Backend directo (desarrollo)
+
+paths:
+  /health:
+    get:
+      operationId: get_health
+      summary: Estado del sistema
+      description: |
+        Verifica la conectividad con todos los servicios dependientes
+        (PostgreSQL, Redis, Mosquitto). Usado por orquestadores y monitoreo.
+      tags:
+        - Monitor
+      responses:
+        "200":
+          description: Todos los servicios operativos
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                services:
+                  postgres: ok
+                  redis: ok
+                  mosquitto: ok
+                version: 0.0.1-skeleton
+                trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        "503":
+          description: Uno o más servicios no disponibles
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: degraded
+                services:
+                  postgres: ok
+                  redis: error
+                  mosquitto: ok
+                version: 0.0.1-skeleton
+                trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+components:
+  headers:
+    XTraceID:
+      description: |
+        Identificador único del request para trazabilidad end-to-end.
+        Se propaga en todos los logs del backend con el mismo valor.
+      schema:
+        type: string
+        format: uuid
+        example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - services
+        - version
+        - trace_id
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+          description: Estado global del sistema
+        services:
+          type: object
+          required:
+            - postgres
+            - redis
+            - mosquitto
+          properties:
+            postgres:
+              type: string
+              enum: [ok, error]
+            redis:
+              type: string
+              enum: [ok, error]
+            mosquitto:
+              type: string
+              enum: [ok, error]
+        version:
+          type: string
+          example: "0.0.1-skeleton"
+        trace_id:
+          type: string
+          format: uuid
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - trace_id
+      properties:
+        error:
+          type: string
+          description: Descripción del error
+        trace_id:
+          type: string
+          format: uuid
+          description: Trace ID del request para correlación con logs
