@@ -12,7 +12,9 @@ Endpoints FastAPI. Cada router implementa el contrato definido en `docs/openapi.
 
 | Archivo | Propósito |
 |---------|-----------|
-| `monitor.py` | `GET /health` — estado de todos los servicios |
+| `monitor.py` | `GET /health` — estado de todos los servicios (público) |
+| `auth.py` | `POST /auth/login`, `/auth/refresh`, `/auth/logout` — autenticación y renovación de tokens |
+| `users.py` | `GET/POST /users` y `GET/PATCH/DELETE /users/{id}` — CRUD de usuarios con RBAC |
 
 ## Cómo agregar un router nuevo
 

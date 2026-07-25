@@ -26,6 +26,9 @@ class DeviceResponse(BaseModel):
     status: str
 ```
 
-## Contenido actual
+## Archivos
 
-Vacío en Sprint 0. Los schemas se crean junto con sus routers a partir de Sprint 1.
+| Archivo | Schemas |
+|---------|---------|
+| `auth.py` | `LoginRequest`, `RefreshRequest`, `UserInToken`, `TokenResponse`, `RefreshResponse` |
+| `users.py` | `UserCreate`, `UserUpdate`, `UserResponse` |
