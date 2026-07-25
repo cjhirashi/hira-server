@@ -19,8 +19,10 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="UTC",
     enable_utc=True,
+    broker_connection_retry_on_startup=True,
     task_routes={
         "workers.bacnet_poller.*": {"queue": "protocols"},
         "workers.mqtt_listener.*": {"queue": "protocols"},
+        "workers.simulator_runner.*": {"queue": "simulators"},
     },
 )

@@ -89,7 +89,8 @@ async def _poll_device(bacnet, device, redis, db_adapter) -> None:
         if quality == "bad":
             fail_count += 1
 
-    if fail_count >= _OFFLINE_THRESHOLD:
+    # Marcar offline si todos los puntos fallaron (o si supera el umbral)
+    if len(points) > 0 and fail_count >= min(_OFFLINE_THRESHOLD, len(points)):
         async with db_adapter.get_session() as session:
             from models.devices import Device
             from sqlalchemy import update
