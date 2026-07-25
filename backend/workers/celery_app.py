@@ -1,0 +1,25 @@
+"""Instancia Celery compartida para todos los workers de Hira."""
+from celery import Celery
+from core.config import settings
+
+celery_app = Celery(
+    "hira",
+    broker=settings.redis_url,
+    backend=settings.redis_url,
+    include=[
+        "workers.bacnet_poller",
+        "workers.mqtt_listener",
+    ],
+)
+
+celery_app.conf.update(
+    task_serializer="json",
+    result_serializer="json",
+    accept_content=["json"],
+    timezone="UTC",
+    enable_utc=True,
+    task_routes={
+        "workers.bacnet_poller.*": {"queue": "protocols"},
+        "workers.mqtt_listener.*": {"queue": "protocols"},
+    },
+)
