@@ -9,6 +9,7 @@ celery_app = Celery(
     include=[
         "workers.bacnet_poller",
         "workers.mqtt_listener",
+        "workers.simulator_runner",
     ],
 )
 
