@@ -17,20 +17,28 @@ Disponible en http://localhost:5173. El proxy de Vite redirige `/api/*` al backe
 
 ## Estructura de `src/`
 
-| Carpeta | Propósito |
-|---------|-----------|
-| `components/` | Componentes reutilizables (PointValue, AlarmBadge, etc.) |
-| `hooks/` | Custom hooks (prefijo `use`) |
-| `pages/` | Vistas completas por ruta |
-| `styles/` | CSS global y tokens de Material Design 3 |
+| Carpeta / Archivo | Propósito |
+|---|---|
+| `components/auth/LoginPage.tsx` | Formulario de login JWT |
+| `components/layout/Shell.tsx` | Shell con navegación lateral y `<Outlet>` |
+| `hooks/useWebSocket.ts` | Hook de conexión WebSocket con auto-reconexión exponencial |
+| `hooks/usePoints.ts` | Hook que suscribe actualizaciones de puntos via WS |
+| `store/pointsStore.ts` | Store Zustand de valores de puntos en tiempo real |
+| `services/api.ts` | Cliente axios con interceptores de Auth y 401 |
+| `App.tsx` | React Router: rutas `/login`, `/dashboard`, `/alarms`, etc. |
 
 ## Tecnologías
 
-- React 18 con hooks (sin clases)
-- TypeScript estricto (sin `any` sin justificación)
-- Vite para desarrollo y build
-- Material Design 3 con tokens CSS (`var(--md-sys-color-*)`)
+- React 18 + TypeScript — hooks, sin clases
+- React Router v6 — rutas declarativas
+- Zustand — estado global de puntos en tiempo real
+- Axios — HTTP con interceptores JWT
+- WebSocket nativo — tiempo real (auto-reconexión con backoff exponencial)
+- Material Design 3 con tokens CSS (`var(--md-sys-color-*)`, `var(--hira-alarm-*)`)
 
-## Contenido actual
+## Flujo tiempo real
 
-Esqueleto mínimo (Sprint 0). La UI completa se implementa a partir de Sprint 5+.
+1. `useWebSocket` abre `ws://<host>/ws?token=<jwt>` al montar
+2. Mensajes `point:update` se despachan a `usePointsStore` via `usePoints`
+3. Componentes consumen `usePointsStore().points[id]` para renderizar valores en vivo
+4. Si el WebSocket cierra, se reintenta con backoff: 1s → 2s → 4s → … → 30s máximo
