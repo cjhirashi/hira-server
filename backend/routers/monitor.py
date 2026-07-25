@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(tags=["Monitor"])
 
-VERSION = "0.0.1-skeleton"
+VERSION = "0.1.0"
 
 
 async def _check_postgres() -> str:

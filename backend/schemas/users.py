@@ -1,9 +1,12 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
+
+
+_EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: str = Field(pattern=_EMAIL_PATTERN)
     full_name: str | None = Field(default=None, max_length=150)
     password: str = Field(min_length=8)
     role_id: int = Field(ge=1)
