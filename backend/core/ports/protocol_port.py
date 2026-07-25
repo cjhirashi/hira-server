@@ -10,7 +10,7 @@ class ProtocolPort(Protocol):
     pymodbus, paho-mqtt ni ninguna librería de protocolo concreta.
     """
 
-    async def connect(self) -> None:
+    async def connect(self, config: dict[str, Any] | None = None) -> None:
         """Establece la conexión con el dispositivo o broker."""
         ...
 
@@ -18,16 +18,27 @@ class ProtocolPort(Protocol):
         """Cierra la conexión limpiamente."""
         ...
 
-    async def read_point(self, point_id: str) -> Any:
-        """Lee el valor actual de un punto por su identificador."""
-        ...
-
-    async def write_point(self, point_id: str, value: Any) -> None:
-        """Escribe un valor en un punto."""
-        ...
-
     async def scan(self) -> list[dict[str, Any]]:
-        """Descubre los puntos disponibles en el dispositivo/broker."""
+        """
+        Descubre dispositivos en la red.
+        Retorna lista de dicts: [{instance, ip, name, vendor, ...}]
+        """
+        ...
+
+    async def read_point(self, device_id: str, point_address: str) -> dict[str, Any]:
+        """
+        Lee el valor actual de un punto.
+        Retorna: {"value": Any, "quality": "good|bad|uncertain", "timestamp": str ISO8601}
+        Si el dispositivo no responde → quality="bad", value=None.
+        """
+        ...
+
+    async def write_point(self, device_id: str, point_address: str, value: Any) -> bool:
+        """
+        Escribe un valor en un punto.
+        Retorna True si la escritura fue confirmada, False si no.
+        Lanza excepción si el dispositivo está offline.
+        """
         ...
 
     async def health_check(self) -> bool:
