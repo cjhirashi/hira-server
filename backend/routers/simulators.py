@@ -75,6 +75,19 @@ async def create_simulator(
     return _device_to_simulator_response(device)
 
 
+@router.get("/{simulator_id}", response_model=SimulatorResponse)
+async def get_simulator(
+    simulator_id: int,
+    _: dict[str, Any] = Depends(require_permission("devices:read")),
+) -> Any:
+    adapter = get_db_adapter()
+    async with adapter.get_session() as session:
+        device = await session.get(Device, simulator_id)
+    if device is None or not device.is_simulator:
+        raise HTTPException(status_code=404, detail="Simulador no encontrado")
+    return _device_to_simulator_response(device)
+
+
 @router.post("/{simulator_id}/start", response_model=SimulatorResponse)
 async def start_simulator(
     simulator_id: int,
