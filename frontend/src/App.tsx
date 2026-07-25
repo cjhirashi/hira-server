@@ -1,8 +1,55 @@
-export default function App() {
+import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import Shell from './components/layout/Shell'
+import LoginPage from './components/auth/LoginPage'
+
+function PlaceholderPage({ title }: { title: string }) {
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: '2rem' }}>
-      <h1>Hira</h1>
-      <p>Walking Skeleton — Sprint 0</p>
+    <div>
+      <h2>{title}</h2>
+      <p style={{ color: 'var(--md-sys-color-on-surface-variant, #888)' }}>
+        Sprint en construcción
+      </p>
     </div>
+  )
+}
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('hira-token')
+  if (!token) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
+export default function App() {
+  useEffect(() => {
+    const stored = localStorage.getItem('hira-theme')
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const theme = stored ?? (systemDark ? 'dark' : 'light')
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [])
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Shell />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<PlaceholderPage title="Dashboard" />} />
+          <Route path="alarms" element={<PlaceholderPage title="Alarmas" />} />
+          <Route path="history" element={<PlaceholderPage title="Históricos" />} />
+          <Route path="config" element={<PlaceholderPage title="Configuración" />} />
+          <Route path="logic" element={<PlaceholderPage title="Lógica" />} />
+          <Route path="ai" element={<PlaceholderPage title="IA del Integrador" />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
