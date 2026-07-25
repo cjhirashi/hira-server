@@ -7,24 +7,7 @@ Pydantic schemas para validación de requests y serialización de responses.
 - Un archivo por dominio: `auth.py`, `devices.py`, `points.py`, etc.
 - Separar schemas de request y response dentro del mismo archivo
 - Sufijos: `*Request`, `*Response`, `*Create`, `*Update`
-
-## Ejemplo
-
-```python
-# schemas/devices.py
-from pydantic import BaseModel
-
-class DeviceCreate(BaseModel):
-    name: str
-    protocol: str
-    address: str
-
-class DeviceResponse(BaseModel):
-    id: int
-    name: str
-    protocol: str
-    status: str
-```
+- **No usar `EmailStr`** — usar `str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")` para soportar dominios `.local` internos
 
 ## Archivos
 
@@ -32,3 +15,6 @@ class DeviceResponse(BaseModel):
 |---------|---------|
 | `auth.py` | `LoginRequest`, `RefreshRequest`, `UserInToken`, `TokenResponse`, `RefreshResponse` |
 | `users.py` | `UserCreate`, `UserUpdate`, `UserResponse` |
+| `devices.py` | `DeviceCreate`, `DeviceUpdate`, `DeviceResponse`, `DeviceScanResult` |
+| `points.py` | `PointValue`, `PointWriteRequest`, `PointWriteResponse` |
+| `simulators.py` | `SimulatorCreate`, `SimulatorResponse` |
