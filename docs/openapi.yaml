@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Hira API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     API de Hira — plataforma SCADA para integradores de automatización de edificios.
 
@@ -34,6 +34,12 @@ tags:
     description: Autenticación — login, refresh, logout
   - name: Users
     description: Gestión de usuarios y roles
+  - name: Devices
+    description: Dispositivos industriales — registro, escaneo, configuración
+  - name: Points
+    description: Puntos de datos — lectura y escritura de valores
+  - name: Simulators
+    description: Simuladores de dispositivos para desarrollo sin hardware real
 
 paths:
   /health:
@@ -518,6 +524,681 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /devices:
+    get:
+      operationId: list_devices
+      summary: Listar dispositivos
+      description: Lista todos los dispositivos registrados. Requiere `devices:read`.
+      tags:
+        - Devices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: protocol
+          in: query
+          schema:
+            type: string
+            enum: [bacnet, modbus, mqtt]
+          description: Filtrar por protocolo
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [online, offline, unknown, error]
+          description: Filtrar por estado
+      responses:
+        "200":
+          description: Lista de dispositivos
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeviceResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: create_device
+      summary: Registrar dispositivo manualmente
+      description: Crea un dispositivo sin escaneo. Requiere `devices:write`.
+      tags:
+        - Devices
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceCreate"
+      responses:
+        "201":
+          description: Dispositivo creado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceResponse"
+        "400":
+          description: Datos inválidos
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /devices/scan:
+    post:
+      operationId: scan_devices
+      summary: Escanear red en busca de dispositivos
+      description: |
+        Dispara un escaneo de red según el protocolo indicado.
+        BACnet → Who-Is broadcast. MQTT → suscripción wildcard `#` durante N segundos.
+        Los dispositivos descubiertos se registran automáticamente en la BD.
+        Requiere `devices:write`.
+      tags:
+        - Devices
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - protocol
+              properties:
+                protocol:
+                  type: string
+                  enum: [bacnet, mqtt]
+                  description: Protocolo a escanear
+                  example: bacnet
+                timeout_s:
+                  type: integer
+                  minimum: 1
+                  maximum: 30
+                  default: 5
+                  description: Segundos de espera para respuestas
+      responses:
+        "200":
+          description: Resultado del escaneo
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceScanResult"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /devices/{device_id}:
+    get:
+      operationId: get_device
+      summary: Obtener dispositivo por ID
+      description: Devuelve detalle del dispositivo. Requiere `devices:read`.
+      tags:
+        - Devices
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: Datos del dispositivo
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Dispositivo no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    put:
+      operationId: update_device
+      summary: Actualizar configuración del dispositivo
+      description: |
+        Actualiza nombre, dirección, puerto, config o area.
+        No permite cambiar `is_simulator` a `false` si el dispositivo es simulador
+        (retorna 422). Requiere `devices:write`.
+      tags:
+        - Devices
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceCreate"
+      responses:
+        "200":
+          description: Dispositivo actualizado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Dispositivo no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Intento de cambiar is_simulator=false en un simulador
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "No se puede cambiar is_simulator a false sin validación explícita"
+                trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+  /devices/{device_id}/points:
+    get:
+      operationId: list_device_points
+      summary: Listar puntos de un dispositivo
+      description: Devuelve todos los puntos configurados para el dispositivo. Requiere `points:read`.
+      tags:
+        - Devices
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: Lista de puntos del dispositivo
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PointValue"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Dispositivo no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /points/{point_id}/value:
+    get:
+      operationId: get_point_value
+      summary: Leer valor actual de un punto
+      description: |
+        Devuelve el valor más reciente del punto almacenado en Redis
+        (`point:{id}:value`). No realiza lectura directa al dispositivo.
+        Requiere `points:read`.
+      tags:
+        - Points
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PointId"
+      responses:
+        "200":
+          description: Valor actual del punto
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointValue"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Punto no encontrado o sin valor en caché
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /points/{point_id}/write:
+    post:
+      operationId: write_point_value
+      summary: Escribir valor a un punto
+      description: |
+        Envía el valor al dispositivo usando el adaptador de protocolo correspondiente
+        (BACnet write property / MQTT publish). Confirma la escritura releyendo el punto.
+        Requiere `points:write` — Visor recibe 403.
+      tags:
+        - Points
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PointId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PointWriteRequest"
+            example:
+              value: 21.5
+      responses:
+        "200":
+          description: Escritura exitosa — valor confirmado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointWriteResponse"
+        "400":
+          description: Punto no escribible o valor fuera de rango
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso `points:write`
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Permiso requerido: points:write"
+                trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        "404":
+          description: Punto no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Dispositivo offline o error de comunicación
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /simulators:
+    get:
+      operationId: list_simulators
+      summary: Listar simuladores
+      description: Lista todos los dispositivos con `is_simulator=true`. Requiere `devices:read`.
+      tags:
+        - Simulators
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de simuladores
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SimulatorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: create_simulator
+      summary: Crear simulador
+      description: |
+        Crea un dispositivo marcado como `is_simulator=true`. El simulador
+        no arranca automáticamente — usar `POST /simulators/{id}/start`.
+        Requiere `devices:write`.
+      tags:
+        - Simulators
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulatorCreate"
+      responses:
+        "201":
+          description: Simulador creado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulatorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /simulators/{simulator_id}/start:
+    post:
+      operationId: start_simulator
+      summary: Arrancar simulador
+      description: |
+        Lanza el simulador como tarea Celery. Devuelve el ID de la tarea.
+        Si ya está corriendo, devuelve 400. Requiere `devices:write`.
+      tags:
+        - Simulators
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SimulatorId"
+      responses:
+        "200":
+          description: Simulador arrancado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulatorResponse"
+        "400":
+          description: El simulador ya está corriendo
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Simulador no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /simulators/{simulator_id}/stop:
+    post:
+      operationId: stop_simulator
+      summary: Detener simulador
+      description: |
+        Revoca la tarea Celery activa y actualiza el estado a `stopped`.
+        Si ya está detenido, devuelve 400. Requiere `devices:write`.
+      tags:
+        - Simulators
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SimulatorId"
+      responses:
+        "200":
+          description: Simulador detenido
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulatorResponse"
+        "400":
+          description: El simulador ya está detenido
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Simulador no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -547,6 +1228,33 @@ components:
         type: integer
         minimum: 1
       description: ID numérico del usuario
+
+    DeviceId:
+      name: device_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: ID numérico del dispositivo
+
+    PointId:
+      name: point_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: ID numérico del punto
+
+    SimulatorId:
+      name: simulator_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: ID numérico del simulador (dispositivo con is_simulator=true)
 
   schemas:
     # ── Monitor ──────────────────────────────────────────────────────────────
@@ -750,6 +1458,233 @@ components:
           format: date-time
           nullable: true
           example: "2026-07-25T12:30:00Z"
+
+    # ── Devices ──────────────────────────────────────────────────────────────
+
+    DeviceCreate:
+      type: object
+      required:
+        - name
+        - protocol
+        - address
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: "AHU-01"
+        protocol:
+          type: string
+          enum: [bacnet, modbus, mqtt]
+          example: bacnet
+        address:
+          type: string
+          description: IP o hostname del dispositivo
+          example: "192.168.1.100"
+        port:
+          type: integer
+          nullable: true
+          description: Puerto de comunicación (default según protocolo)
+          example: 47808
+        config_json:
+          type: object
+          description: Configuración adicional específica del protocolo
+          example: {"device_id": 1001, "network": 1}
+        area:
+          type: string
+          nullable: true
+          maxLength: 100
+          example: "Piso 3 — Sala de máquinas"
+        auto_start:
+          type: boolean
+          default: false
+          description: Arrancar polling automáticamente al levantar el servidor
+
+    DeviceResponse:
+      type: object
+      required:
+        - id
+        - name
+        - protocol
+        - address
+        - status
+        - is_simulator
+        - auto_start
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "AHU-01"
+        protocol:
+          type: string
+          enum: [bacnet, modbus, mqtt]
+          example: bacnet
+        address:
+          type: string
+          example: "192.168.1.100"
+        port:
+          type: integer
+          nullable: true
+          example: 47808
+        config_json:
+          type: object
+          nullable: true
+          example: {"device_id": 1001}
+        area:
+          type: string
+          nullable: true
+          example: "Piso 3"
+        status:
+          type: string
+          enum: [online, offline, unknown, error]
+          example: online
+        is_simulator:
+          type: boolean
+          example: false
+        auto_start:
+          type: boolean
+          example: false
+
+    DeviceScanResult:
+      type: object
+      required:
+        - discovered
+        - scan_duration_ms
+      properties:
+        discovered:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceResponse"
+        scan_duration_ms:
+          type: integer
+          description: Duración total del escaneo en milisegundos
+          example: 3200
+
+    # ── Points ────────────────────────────────────────────────────────────────
+
+    PointValue:
+      type: object
+      required:
+        - id
+        - name
+        - value
+        - quality
+        - timestamp
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: "Temperatura impulsión"
+        value:
+          description: Valor actual del punto (número, booleano o string según tipo)
+          example: 22.5
+        unit:
+          type: string
+          nullable: true
+          example: "°C"
+        quality:
+          type: string
+          enum: [good, bad, uncertain, offline]
+          example: good
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-07-25T10:00:00Z"
+
+    PointWriteRequest:
+      type: object
+      required:
+        - value
+      properties:
+        value:
+          description: Valor a escribir en el punto
+          example: 21.0
+
+    PointWriteResponse:
+      type: object
+      required:
+        - success
+        - value
+        - timestamp
+      properties:
+        success:
+          type: boolean
+          example: true
+        value:
+          description: Valor confirmado tras la escritura
+          example: 21.0
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-07-25T10:01:00Z"
+
+    # ── Simulators ────────────────────────────────────────────────────────────
+
+    SimulatorCreate:
+      type: object
+      required:
+        - name
+        - protocol
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: "SIM-BACnet-01"
+        protocol:
+          type: string
+          enum: [bacnet, modbus, mqtt]
+          example: bacnet
+        config_json:
+          type: object
+          description: |
+            Configuración del simulador según protocolo.
+            BACnet: `{device_id, points: [{name, object_type, value_range}]}`
+            Modbus: `{port, registers: [{address, value_range}]}`
+            MQTT: `{topics: [{path, interval_s, value_range}]}`
+          example:
+            device_id: 9001
+            points:
+              - name: "temp_supply"
+                object_type: "analogInput"
+                value_range: [18.0, 26.0]
+
+    SimulatorResponse:
+      type: object
+      required:
+        - id
+        - name
+        - protocol
+        - status
+        - is_simulator
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "SIM-BACnet-01"
+        protocol:
+          type: string
+          enum: [bacnet, modbus, mqtt]
+          example: bacnet
+        status:
+          type: string
+          enum: [running, stopped, error, unknown]
+          example: stopped
+        is_simulator:
+          type: boolean
+          example: true
+        config_json:
+          type: object
+          nullable: true
+          example: {"device_id": 9001}
+        celery_task_id:
+          type: string
+          nullable: true
+          description: ID de la tarea Celery activa (null si detenido)
 
     # ── Shared ────────────────────────────────────────────────────────────────
 
