@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     hub_api_url: str = Field(default="")
     hub_api_key: str = Field(default="")
 
+    # ── Admin inicial ──────────────────────────────────────────────────────
+    admin_email: str = Field(default="admin@hira.local", description="Email del usuario Admin inicial")
+    admin_password: str = Field(default="", description="Contraseña del usuario Admin inicial")
+    admin_full_name: str = Field(default="Administrador Hira")
+
     # ── Observabilidad ─────────────────────────────────────────────────────
     crash_reporter_enabled: bool = Field(default=False)
     environment: Literal["development", "production", "test"] = Field(default="development")
