@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Hira API
-  version: 0.0.1-skeleton
+  version: 0.1.0
   description: |
     API de Hira — plataforma SCADA para integradores de automatización de edificios.
 
@@ -16,11 +16,24 @@ info:
     en el request, se reutiliza; si no, se genera un UUID nuevo. Todos los logs
     del backend incluyen el mismo `trace_id` para trazabilidad end-to-end.
 
+    ## Autenticación
+    Los endpoints protegidos requieren JWT Bearer token en `Authorization`.
+    El token se obtiene via `POST /auth/login` (15 min). Se renueva con
+    `POST /auth/refresh` usando el refresh token (7 días, almacenado en Redis).
+
 servers:
   - url: /api
     description: API (vía Nginx reverse proxy)
   - url: http://localhost:8000
     description: Backend directo (desarrollo)
+
+tags:
+  - name: Monitor
+    description: Estado del sistema y healthchecks
+  - name: Auth
+    description: Autenticación — login, refresh, logout
+  - name: Users
+    description: Gestión de usuarios y roles
 
 paths:
   /health:
@@ -29,7 +42,7 @@ paths:
       summary: Estado del sistema
       description: |
         Verifica la conectividad con todos los servicios dependientes
-        (PostgreSQL, Redis, Mosquitto). Usado por orquestadores y monitoreo.
+        (PostgreSQL, Redis, Mosquitto). Endpoint público — no requiere autenticación.
       tags:
         - Monitor
       responses:
@@ -48,7 +61,7 @@ paths:
                   postgres: ok
                   redis: ok
                   mosquitto: ok
-                version: 0.0.1-skeleton
+                version: 0.1.0
                 trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         "503":
           description: Uno o más servicios no disponibles
@@ -65,10 +78,456 @@ paths:
                   postgres: ok
                   redis: error
                   mosquitto: ok
-                version: 0.0.1-skeleton
+                version: 0.1.0
                 trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
+  /auth/login:
+    post:
+      operationId: auth_login
+      summary: Iniciar sesión
+      description: |
+        Autentica con email y contraseña. Devuelve un access token (JWT HS256,
+        15 min) y un refresh token (JWT HS256, 7 días, almacenado en Redis).
+        No requiere autenticación previa.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: admin@hira.local
+              password: "SecurePassword123!"
+      responses:
+        "200":
+          description: Login exitoso
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          description: Credenciales inválidas
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Credenciales inválidas"
+                trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        "422":
+          description: Cuerpo del request inválido
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/refresh:
+    post:
+      operationId: auth_refresh
+      summary: Renovar access token
+      description: |
+        Intercambia un refresh token válido por un nuevo par de tokens
+        (access + refresh). El refresh token anterior queda invalidado en Redis
+        (rotación de tokens). No requiere Bearer token en Authorization.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: Tokens renovados
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          description: Refresh token inválido o expirado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Refresh token inválido o expirado"
+                trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+  /auth/logout:
+    post:
+      operationId: auth_logout
+      summary: Cerrar sesión
+      description: |
+        Invalida el refresh token en Redis. El access token sigue válido hasta
+        su expiración natural (15 min) — el cliente debe descartarlo localmente.
+        Requiere Bearer token válido.
+      tags:
+        - Auth
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: Sesión cerrada correctamente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Sesión cerrada"
+        "401":
+          description: Token no válido o expirado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users:
+    get:
+      operationId: list_users
+      summary: Listar usuarios
+      description: |
+        Devuelve la lista paginada de usuarios del sistema.
+        Requiere permiso `users:read` (rol Admin u Operador).
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Número de registros a omitir (paginación)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Número máximo de registros a devolver
+      responses:
+        "200":
+          description: Lista de usuarios
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Permiso requerido: users:read"
+                trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+    post:
+      operationId: create_user
+      summary: Crear usuario
+      description: |
+        Crea un nuevo usuario. La contraseña se almacena como hash bcrypt
+        (factor 12). Requiere permiso `users:write` (rol Admin).
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+            example:
+              email: operador@hira.local
+              full_name: "Juan Pérez"
+              password: "SeguraPass456!"
+              role_id: 2
+      responses:
+        "201":
+          description: Usuario creado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Email ya registrado u otro error de validación
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "El email ya está registrado"
+                trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Cuerpo del request inválido
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{user_id}:
+    get:
+      operationId: get_user
+      summary: Obtener usuario por ID
+      description: |
+        Devuelve datos de un usuario específico.
+        Requiere permiso `users:read`. Un usuario puede ver su propio perfil
+        sin importar su rol.
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: Datos del usuario
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Usuario no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: update_user
+      summary: Actualizar usuario
+      description: |
+        Actualiza campos del usuario (nombre, rol, activo). Si se cambia el rol,
+        el caché RBAC del usuario se invalida inmediatamente en Redis.
+        Requiere permiso `users:write` (rol Admin).
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Usuario actualizado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Usuario no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: delete_user
+      summary: Desactivar usuario
+      description: |
+        Marca al usuario como inactivo (soft delete — no se elimina de la BD).
+        Invalida el caché RBAC. Requiere permiso `users:write` (rol Admin).
+        Un Admin no puede desactivarse a sí mismo.
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: Usuario desactivado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Usuario desactivado"
+        "400":
+          description: Operación inválida (e.g. auto-desactivación)
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Usuario no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token obtenido via `POST /auth/login`.
+        Vida útil: 15 minutos. Renovar con `POST /auth/refresh`.
+
   headers:
     XTraceID:
       description: |
@@ -79,7 +538,19 @@ components:
         format: uuid
         example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
+  parameters:
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: ID numérico del usuario
+
   schemas:
+    # ── Monitor ──────────────────────────────────────────────────────────────
+
     HealthResponse:
       type: object
       required:
@@ -110,10 +581,177 @@ components:
               enum: [ok, error]
         version:
           type: string
-          example: "0.0.1-skeleton"
+          example: "0.1.0"
         trace_id:
           type: string
           format: uuid
+
+    # ── Auth ─────────────────────────────────────────────────────────────────
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email del usuario
+          example: admin@hira.local
+        password:
+          type: string
+          minLength: 8
+          description: Contraseña en texto plano (se verifica contra bcrypt)
+
+    RefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: JWT refresh token obtenido en el login o refresh anterior
+
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - refresh_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+          description: JWT de acceso (HS256, 15 minutos)
+        refresh_token:
+          type: string
+          description: JWT de renovación (HS256, 7 días, almacenado en Redis)
+        token_type:
+          type: string
+          enum: [bearer]
+          example: bearer
+        expires_in:
+          type: integer
+          description: Segundos hasta la expiración del access token
+          example: 900
+        user:
+          $ref: "#/components/schemas/UserInToken"
+
+    UserInToken:
+      type: object
+      description: Datos mínimos del usuario incluidos en la respuesta de auth
+      required:
+        - id
+        - email
+        - role
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: admin@hira.local
+        full_name:
+          type: string
+          nullable: true
+          example: "Administrador Hira"
+        role:
+          type: string
+          description: Nombre del rol del usuario
+          example: Admin
+
+    # ── Users ─────────────────────────────────────────────────────────────────
+
+    UserCreate:
+      type: object
+      required:
+        - email
+        - password
+        - role_id
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email único del usuario
+          example: operador@hira.local
+        full_name:
+          type: string
+          nullable: true
+          maxLength: 150
+          description: Nombre completo (opcional)
+          example: "Juan Pérez"
+        password:
+          type: string
+          minLength: 8
+          description: Contraseña en texto plano — se hashea con bcrypt factor 12
+        role_id:
+          type: integer
+          minimum: 1
+          description: ID del rol asignado (1=Admin, 2=Operador, 3=Visor)
+          example: 2
+
+    UserUpdate:
+      type: object
+      description: Todos los campos son opcionales — solo se actualizan los enviados
+      properties:
+        full_name:
+          type: string
+          nullable: true
+          maxLength: 150
+          example: "Juan Pérez García"
+        role_id:
+          type: integer
+          minimum: 1
+          description: Cambiar el rol invalida inmediatamente el caché RBAC del usuario.
+          example: 3
+        is_active:
+          type: boolean
+          description: Activar o desactivar la cuenta sin eliminarla
+          example: true
+
+    UserResponse:
+      type: object
+      required:
+        - id
+        - email
+        - role_id
+        - role_name
+        - is_active
+        - created_at
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: admin@hira.local
+        full_name:
+          type: string
+          nullable: true
+          example: "Administrador Hira"
+        role_id:
+          type: integer
+          example: 1
+        role_name:
+          type: string
+          example: Admin
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-07-25T10:00:00Z"
+        last_login:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-07-25T12:30:00Z"
+
+    # ── Shared ────────────────────────────────────────────────────────────────
 
     ErrorResponse:
       type: object
