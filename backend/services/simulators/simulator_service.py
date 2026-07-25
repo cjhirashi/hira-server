@@ -47,9 +47,8 @@ async def start_simulator(simulator_id: int) -> dict[str, Any]:
         task = _task_fn.delay(simulator_id, config)
 
         device.status = "running"
-        # Guardamos el task_id en config_json para poder revocarlo
-        config["_celery_task_id"] = task.id
-        device.config_json = config
+        # Nueva instancia de dict para forzar detección de cambio en SQLAlchemy JSON
+        device.config_json = {**config, "_celery_task_id": task.id}
 
     logger.info("Simulador arrancado",
                 extra={"simulator_id": simulator_id, "task_id": task.id})
@@ -77,10 +76,10 @@ async def stop_simulator(simulator_id: int) -> dict[str, Any]:
 
         if task_id:
             celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
-            config.pop("_celery_task_id", None)
 
         device.status = "stopped"
-        device.config_json = config
+        # Nueva instancia de dict para forzar detección de cambio en SQLAlchemy JSON
+        device.config_json = {k: v for k, v in config.items() if k != "_celery_task_id"}
 
     logger.info("Simulador detenido", extra={"simulator_id": simulator_id, "task_id": task_id})
     return {"id": simulator_id, "celery_task_id": None, "status": "stopped"}
