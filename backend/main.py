@@ -10,7 +10,9 @@ from core.logger import get_logger
 from core.middleware import CorrelationIdMiddleware
 from core.redis import close_redis
 from core.security import hash_password
+from routers.auth import router as auth_router
 from routers.monitor import router as monitor_router
+from routers.users import router as users_router
 
 logger = get_logger(__name__)
 
@@ -86,3 +88,5 @@ app.add_middleware(
 
 # ── Routers ────────────────────────────────────────────────────────────────
 app.include_router(monitor_router)
+app.include_router(auth_router)
+app.include_router(users_router)
