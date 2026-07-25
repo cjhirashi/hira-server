@@ -26,3 +26,32 @@ def get_db_adapter():
     raise ValueError(
         f"HIRA_DEPLOY_MODE='{mode}' no reconocido. Valores válidos: 'server', 'studio'"
     )
+
+
+def get_protocol_adapter(protocol: str):
+    """Retorna la instancia de ProtocolPort correcta para el protocolo indicado.
+
+    - bacnet → BACnetAdapter (BAC0)
+    - mqtt   → MQTTAdapter (paho-mqtt)
+    - modbus → reservado Sprint 2 (usar simulador por ahora)
+    """
+    p = protocol.lower()
+
+    if p == "bacnet":
+        from adapters.protocol.bacnet_adapter import BACnetAdapter
+        logger.info("Factory: usando BACnetAdapter")
+        return BACnetAdapter()
+
+    if p == "mqtt":
+        from adapters.protocol.mqtt_adapter import MQTTAdapter
+        logger.info("Factory: usando MQTTAdapter")
+        return MQTTAdapter()
+
+    if p == "modbus":
+        raise NotImplementedError(
+            "Modbus directo reservado — usar SimuladorModbus para desarrollo"
+        )
+
+    raise ValueError(
+        f"Protocolo '{protocol}' no reconocido. Valores válidos: 'bacnet', 'mqtt', 'modbus'"
+    )
