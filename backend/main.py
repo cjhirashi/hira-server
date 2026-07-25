@@ -11,12 +11,15 @@ from core.middleware import CorrelationIdMiddleware
 from core.redis import close_redis
 from core.security import hash_password
 from routers.auth import router as auth_router
+from routers.devices import router as devices_router
 from routers.monitor import router as monitor_router
+from routers.points import router as points_router
+from routers.simulators import router as simulators_router
 from routers.users import router as users_router
 
 logger = get_logger(__name__)
 
-_VERSION = "0.1.0"
+_VERSION = "0.2.0"
 
 
 async def _seed_admin() -> None:
@@ -90,3 +93,6 @@ app.add_middleware(
 app.include_router(monitor_router)
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(devices_router, prefix="/api/v1")
+app.include_router(points_router, prefix="/api/v1")
+app.include_router(simulators_router, prefix="/api/v1")
