@@ -75,9 +75,8 @@ services:
     env_file: .env
     volumes:
       - ./mosquitto/config:/mosquitto/config
-      - ./mosquitto/data:/mosquitto/data
-      - ./mosquitto/log:/mosquitto/log
-    entrypoint: ["/mosquitto/config/init.sh"]
+      - mosquitto_data:/mosquitto/data
+    entrypoint: ["sh", "/mosquitto/config/init.sh"]
     networks:
       - hira-network
     restart: unless-stopped
@@ -99,6 +98,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  mosquitto_data:
 
 networks:
   hira-network:
