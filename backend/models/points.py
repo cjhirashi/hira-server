@@ -20,6 +20,10 @@ class Point(Base):
     log_interval_ms: Mapped[int] = mapped_column(Integer, default=60000, nullable=False)
     history_interval_seconds: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     area: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    area_id: Mapped[int | None] = mapped_column(
+        ForeignKey("areas.id", ondelete="SET NULL"), nullable=True
+    )
 
     device: Mapped["Device"] = relationship(back_populates="points")  # noqa: F821
+    area_obj: Mapped["Area | None"] = relationship(back_populates="points")  # noqa: F821
     alarm_definitions: Mapped[list["AlarmDefinition"]] = relationship(back_populates="point")  # noqa: F821
