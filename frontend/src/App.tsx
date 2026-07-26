@@ -4,6 +4,7 @@ import Shell from './components/layout/Shell'
 import LoginPage from './components/auth/LoginPage'
 import { DashboardPage } from './components/dashboard/DashboardPage'
 import { AlarmsPage } from './components/alarms/AlarmsPage'
+import HistoryPage from './components/historicals/HistoryPage'
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -45,7 +46,7 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="alarms" element={<AlarmsPage />} />
-          <Route path="history" element={<PlaceholderPage title="Históricos" />} />
+          <Route path="history" element={<HistoryPage />} />
           <Route path="config" element={<PlaceholderPage title="Configuración" />} />
           <Route path="logic" element={<PlaceholderPage title="Lógica" />} />
           <Route path="ai" element={<PlaceholderPage title="IA del Integrador" />} />
