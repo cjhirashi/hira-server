@@ -38,7 +38,12 @@ async def _subscribe_loop() -> None:
 
                 if "alarm:updates" in channel:
                     alarm_type = data.get("type", "new")
-                    event_name = "alarm:resolved" if alarm_type == "resolved" else "alarm:new"
+                    if alarm_type == "resolved":
+                        event_name = "alarm:resolved"
+                    elif alarm_type == "acknowledged":
+                        event_name = "alarm:acknowledged"
+                    else:
+                        event_name = "alarm:new"
                     await manager.broadcast({"event": event_name, "data": data})
                 else:
                     await manager.broadcast({"event": "point:update", "data": data})
