@@ -30,6 +30,10 @@ class DeviceService:
 |---|---|
 | `alarm_engine.py` | Motor de evaluación de condiciones de alarma |
 | `history_writer.py` | Escritura de históricos en TimescaleDB con control de intervalo mínimo |
+| `ai_config_service.py` | Lectura y escritura de configuración del Agente IA (Fernet-encrypted API key) |
+| `ai_agent.py` | Agente LangChain LCEL con 6 tools del sistema; build_agent + invoke_agent |
+
+> **Nota:** `ai_config_service.py` y `ai_agent.py` usan psycopg2 + redis-py sincrónicos directamente, siguiendo el mismo patrón de `hira_api.py`. Esto es una excepción documentada a la regla hexagonal, necesaria porque se invocan desde contextos FastAPI async vía `run_in_executor`. Ver `DEVIATIONS.md` DEV-007.
 
 ## alarm_engine.py
 
