@@ -3,16 +3,155 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 
 from adapters.factory import get_db_adapter, get_protocol_adapter
 from core.logger import get_logger
 from core.rbac import require_permission
 from core.redis import get_redis
+from models.areas import Area
+from models.devices import Device
 from models.points import Point
-from schemas.points import PointValue, PointWriteRequest, PointWriteResponse
+from schemas.points import PointCreate, PointResponse, PointUpdate, PointValue, PointWriteRequest, PointWriteResponse
 
 router = APIRouter(prefix="/points", tags=["Points"])
 logger = get_logger(__name__)
+
+
+def _to_response(p: Point, area_name: str | None = None) -> PointResponse:
+    return PointResponse(
+        id=p.id,
+        device_id=p.device_id,
+        name=p.name,
+        description=p.description,
+        object_type=p.object_type,
+        address=p.address,
+        unit=p.unit,
+        writable=p.writable,
+        log_enabled=p.log_enabled,
+        history_interval_seconds=p.history_interval_seconds,
+        area_id=p.area_id,
+        area_name=area_name,
+    )
+
+
+@router.post("", response_model=PointResponse, status_code=201, tags=["Configurator"])
+async def create_point(
+    body: PointCreate,
+    _: dict[str, Any] = Depends(require_permission("config:write")),
+) -> Any:
+    adapter = get_db_adapter()
+    async with adapter.get_session() as session:
+        device = await session.get(Device, body.device_id)
+        if device is None:
+            raise HTTPException(status_code=400, detail=f"Dispositivo {body.device_id} no existe")
+
+        area_name: str | None = None
+        if body.area_id is not None:
+            area = await session.get(Area, body.area_id)
+            if area is None:
+                raise HTTPException(status_code=400, detail=f"Área {body.area_id} no existe")
+            area_name = area.name
+
+        point = Point(
+            device_id=body.device_id,
+            name=body.name,
+            description=body.description,
+            object_type=body.object_type,
+            address=body.address,
+            unit=body.unit,
+            writable=body.writable,
+            log_enabled=body.log_enabled,
+            history_interval_seconds=body.history_interval_seconds,
+            area_id=body.area_id,
+        )
+        session.add(point)
+        await session.flush()
+        point_id = point.id
+
+    logger.info("Punto creado", extra={"point_id": point_id, "device_id": body.device_id})
+
+    async with adapter.get_session() as session:
+        point = await session.get(Point, point_id)
+    return _to_response(point, area_name)
+
+
+@router.get("/{point_id}", response_model=PointResponse, tags=["Points"])
+async def get_point(
+    point_id: int,
+    _: dict[str, Any] = Depends(require_permission("points:read")),
+) -> Any:
+    adapter = get_db_adapter()
+    async with adapter.get_session() as session:
+        point = await session.get(Point, point_id)
+        if point is None:
+            raise HTTPException(status_code=404, detail="Punto no encontrado")
+        area_name: str | None = None
+        if point.area_id is not None:
+            area = await session.get(Area, point.area_id)
+            area_name = area.name if area else None
+    return _to_response(point, area_name)
+
+
+@router.put("/{point_id}", response_model=PointResponse, tags=["Configurator"])
+async def update_point(
+    point_id: int,
+    body: PointUpdate,
+    _: dict[str, Any] = Depends(require_permission("config:write")),
+) -> Any:
+    adapter = get_db_adapter()
+    async with adapter.get_session() as session:
+        point = await session.get(Point, point_id)
+        if point is None:
+            raise HTTPException(status_code=404, detail="Punto no encontrado")
+
+        area_name: str | None = None
+        if body.area_id is not None:
+            area = await session.get(Area, body.area_id)
+            if area is None:
+                raise HTTPException(status_code=400, detail=f"Área {body.area_id} no existe")
+            area_name = area.name
+        elif point.area_id is not None:
+            area = await session.get(Area, point.area_id)
+            area_name = area.name if area else None
+
+        if body.name is not None:
+            point.name = body.name
+        if body.description is not None:
+            point.description = body.description
+        if body.unit is not None:
+            point.unit = body.unit
+        if body.writable is not None:
+            point.writable = body.writable
+        if body.log_enabled is not None:
+            point.log_enabled = body.log_enabled
+        if body.history_interval_seconds is not None:
+            point.history_interval_seconds = body.history_interval_seconds
+        if "area_id" in body.model_fields_set:
+            point.area_id = body.area_id
+
+    logger.info("Punto actualizado", extra={"point_id": point_id})
+
+    async with adapter.get_session() as session:
+        point = await session.get(Point, point_id)
+        if point.area_id is not None and area_name is None:
+            area = await session.get(Area, point.area_id)
+            area_name = area.name if area else None
+    return _to_response(point, area_name)
+
+
+@router.delete("/{point_id}", status_code=204, tags=["Configurator"])
+async def delete_point(
+    point_id: int,
+    _: dict[str, Any] = Depends(require_permission("config:write")),
+) -> None:
+    adapter = get_db_adapter()
+    async with adapter.get_session() as session:
+        point = await session.get(Point, point_id)
+        if point is None:
+            raise HTTPException(status_code=404, detail="Punto no encontrado")
+        await session.delete(point)
+    logger.info("Punto eliminado", extra={"point_id": point_id})
 
 
 @router.get("/{point_id}/value", response_model=PointValue)
