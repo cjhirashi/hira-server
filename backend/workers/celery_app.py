@@ -10,6 +10,7 @@ celery_app = Celery(
         "workers.bacnet_poller",
         "workers.mqtt_listener",
         "workers.simulator_runner",
+        "workers.alarm_worker",
     ],
 )
 
@@ -24,5 +25,13 @@ celery_app.conf.update(
         "workers.bacnet_poller.*": {"queue": "protocols"},
         "workers.mqtt_listener.*": {"queue": "protocols"},
         "workers.simulator_runner.*": {"queue": "simulators"},
+        "workers.alarm_worker.*": {"queue": "normal"},
+    },
+    beat_schedule={
+        "evaluate-alarms-every-10s": {
+            "task": "workers.alarm_worker.evaluate_alarms",
+            "schedule": 10.0,
+            "options": {"queue": "normal"},
+        },
     },
 )
