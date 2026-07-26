@@ -1,148 +1,111 @@
 /* ── Reset ────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
-
-body, html, #root {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-}
+body, html, #root { margin: 0; padding: 0; height: 100%; }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   TEMA OSCURO  —  MD3 · Primary Cyan · Surfaces Slate
-   Paleta Slate: https://tailwindcss.com/docs/customizing-colors#slate
+   DESIGN TOKENS — Hira SCADA
+   Paleta: Slate (fondos GitHub-dark) + Cyan (acento principal)
    ═══════════════════════════════════════════════════════════════════════ */
-:root,
-:root[data-theme="dark"] {
-  color-scheme: dark;
-
-  /* Fondo de la ventana */
-  --md-sys-color-background:              #0f172a;   /* slate-900 */
-  --md-sys-color-on-background:           #e2e8f0;   /* slate-200 */
-
-  /* Superficie principal (cards, sidebar, paneles) */
-  --md-sys-color-surface:                 #1e293b;   /* slate-800 */
-  --md-sys-color-on-surface:              #e2e8f0;   /* slate-200 */
-
-  /* Superficie variante (chips, tooltips) */
-  --md-sys-color-surface-variant:         #334155;   /* slate-700 */
-  --md-sys-color-on-surface-variant:      #94a3b8;   /* slate-400 */
-
-  /* Contenedores de superficie */
-  --md-sys-color-surface-container-lowest:  #0b1120;  /* más oscuro que slate-900 */
-  --md-sys-color-surface-container-low:     #162032;  /* entre slate-900 y slate-800 */
-  --md-sys-color-surface-container:         #1e293b;  /* slate-800 */
-  --md-sys-color-surface-container-high:    #243145;  /* slate-800 + */
-  --md-sys-color-surface-container-highest: #2d3d52;  /* slate-700 – */
+:root {
+  /* Fondos */
+  --bg-base:     #0d1117;   /* fondo de página */
+  --bg-surface:  #161b22;   /* cards, sidebar, paneles */
+  --bg-elevated: #1c2128;   /* modales, dropdowns */
+  --bg-hover:    #21262d;   /* hover de items */
 
   /* Bordes */
-  --md-sys-color-outline:                 #475569;   /* slate-600 */
-  --md-sys-color-outline-variant:         #334155;   /* slate-700 */
+  --border-subtle:  #21262d;  /* separadores sutiles */
+  --border-default: #30363d;  /* bordes de card, inputs */
+  --border-strong:  #444c56;  /* tablas, focus */
 
-  /* Inverso */
-  --md-sys-color-inverse-surface:         #e2e8f0;
-  --md-sys-color-inverse-on-surface:      #1e293b;
+  /* Texto */
+  --text-primary:   #e6edf3;  /* texto principal */
+  --text-secondary: #8b949e;  /* labels, metadata */
+  --text-muted:     #484f58;  /* placeholder, deshabilitado */
 
-  /* Primario — Cyan MD3 */
-  --md-sys-color-primary:                 #22d3ee;   /* cyan-400 */
-  --md-sys-color-on-primary:              #003544;
-  --md-sys-color-primary-container:       #004f65;   /* cyan-900 */
-  --md-sys-color-on-primary-container:    #a5f3fc;   /* cyan-200 */
-  --md-sys-color-primary-fixed:           #a5f3fc;
-  --md-sys-color-primary-fixed-dim:       #67e8f9;
-  --md-sys-color-on-primary-fixed:        #001f2a;
-  --md-sys-color-on-primary-fixed-variant:#004f65;
+  /* Acento — Cyan SCADA */
+  --accent:        #22d3ee;   /* cyan-400 — links activos, primario */
+  --accent-hover:  #06b6d4;   /* cyan-500 — hover */
+  --accent-subtle: #0c2a33;   /* fondo de elementos activos */
+  --accent-muted:  #0a1e25;   /* hover de acento */
+  --accent-text:   #a5f3fc;   /* texto sobre fondo oscuro de acento */
 
-  /* Secundario — Slate-Cyan blend */
-  --md-sys-color-secondary:               #7dd3e0;
-  --md-sys-color-on-secondary:            #003b46;
-  --md-sys-color-secondary-container:     #00566a;
-  --md-sys-color-on-secondary-container:  #b2ecf4;
+  /* Semánticos */
+  --success:        #3fb950;
+  --success-subtle: #0d2f1a;
+  --warning:        #d29922;
+  --warning-subtle: #2d1f06;
+  --danger:         #f85149;
+  --danger-subtle:  #2d0f0e;
+  --info:           #79c0ff;
+  --info-subtle:    #0c1f3a;
 
-  /* Terciario */
-  --md-sys-color-tertiary:                #7eb8cc;
-  --md-sys-color-on-tertiary:             #003547;
-  --md-sys-color-tertiary-container:      #004c63;
-  --md-sys-color-on-tertiary-container:   #b3d8ea;
+  /* Alarmas Hira (no cambian con el tema) */
+  --hira-alarm-critical: #ef4444;
+  --hira-alarm-high:     #f97316;
+  --hira-alarm-medium:   #eab308;
+  --hira-alarm-low:      #3b82f6;
+  --hira-status-ok:      #22c55e;
+  --hira-status-offline: #64748b;
+  --hira-status-writing: #a78bfa;
 
-  /* Error */
-  --md-sys-color-error:                   #f28b82;
-  --md-sys-color-on-error:                #601410;
-  --md-sys-color-error-container:         #8c1d18;
-  --md-sys-color-on-error-container:      #f9dedc;
+  /* Tipografía */
+  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+  --text-xs:    0.75rem;     /* 12px */
+  --text-sm:    0.875rem;    /* 14px */
+  --text-base:  1rem;        /* 16px */
+  --text-lg:    1.125rem;    /* 18px */
+  --text-xl:    1.25rem;     /* 20px */
+  --text-2xl:   1.5rem;      /* 24px */
 
-  /* Tokens de alarma — estables, no cambian con el tema */
-  --hira-alarm-critical:  #ef4444;
-  --hira-alarm-high:      #f97316;
-  --hira-alarm-medium:    #eab308;
-  --hira-alarm-low:       #3b82f6;
-  --hira-status-ok:       #22c55e;
-  --hira-status-offline:  #64748b;   /* slate-500 */
-  --hira-status-writing:  #a78bfa;
+  /* Espaciado */
+  --radius-sm:  4px;
+  --radius-md:  6px;
+  --radius-lg:  8px;
+  --radius-xl:  12px;
+
+  /* Layout */
+  --sidebar-width:  220px;
+  --header-height:  52px;
+
+  /* MD3 aliases — mantienen compatibilidad con componentes existentes */
+  --md-sys-color-background:               var(--bg-base);
+  --md-sys-color-on-background:            var(--text-primary);
+  --md-sys-color-surface:                  var(--bg-surface);
+  --md-sys-color-on-surface:               var(--text-primary);
+  --md-sys-color-surface-variant:          var(--bg-elevated);
+  --md-sys-color-on-surface-variant:       var(--text-secondary);
+  --md-sys-color-surface-container:        var(--bg-elevated);
+  --md-sys-color-surface-container-high:   var(--bg-hover);
+  --md-sys-color-surface-container-low:    var(--bg-surface);
+  --md-sys-color-outline:                  var(--border-strong);
+  --md-sys-color-outline-variant:          var(--border-default);
+  --md-sys-color-primary:                  var(--accent);
+  --md-sys-color-on-primary:               var(--accent-subtle);
+  --md-sys-color-primary-container:        var(--accent-subtle);
+  --md-sys-color-on-primary-container:     var(--accent-text);
+  --md-sys-color-error:                    var(--danger);
+  --md-sys-color-on-error:                 #fff;
+  --md-sys-color-error-container:          var(--danger-subtle);
+  --md-sys-color-on-error-container:       #ffdad6;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   TEMA CLARO  —  MD3 · Primary Cyan · Surfaces Slate-light
-   ═══════════════════════════════════════════════════════════════════════ */
-:root[data-theme="light"] {
-  color-scheme: light;
-
-  --md-sys-color-background:              #f8fafc;   /* slate-50 */
-  --md-sys-color-on-background:           #0f172a;   /* slate-900 */
-
-  --md-sys-color-surface:                 #f1f5f9;   /* slate-100 */
-  --md-sys-color-on-surface:              #0f172a;
-
-  --md-sys-color-surface-variant:         #e2e8f0;   /* slate-200 */
-  --md-sys-color-on-surface-variant:      #475569;   /* slate-600 */
-
-  --md-sys-color-surface-container-lowest:  #ffffff;
-  --md-sys-color-surface-container-low:     #f8fafc;
-  --md-sys-color-surface-container:         #f1f5f9;
-  --md-sys-color-surface-container-high:    #e2e8f0;
-  --md-sys-color-surface-container-highest: #cbd5e1;  /* slate-300 */
-
-  --md-sys-color-outline:                 #94a3b8;   /* slate-400 */
-  --md-sys-color-outline-variant:         #cbd5e1;   /* slate-300 */
-
-  --md-sys-color-inverse-surface:         #1e293b;
-  --md-sys-color-inverse-on-surface:      #f1f5f9;
-
-  --md-sys-color-primary:                 #0891b2;   /* cyan-600 */
-  --md-sys-color-on-primary:              #ffffff;
-  --md-sys-color-primary-container:       #cffafe;   /* cyan-100 */
-  --md-sys-color-on-primary-container:    #083344;
-
-  --md-sys-color-secondary:              #0e7490;    /* cyan-700 */
-  --md-sys-color-on-secondary:            #ffffff;
-  --md-sys-color-secondary-container:     #e0f7fa;
-  --md-sys-color-on-secondary-container:  #003544;
-
-  --md-sys-color-tertiary:                #155e75;
-  --md-sys-color-on-tertiary:             #ffffff;
-  --md-sys-color-tertiary-container:      #b2f0fb;
-  --md-sys-color-on-tertiary-container:   #002a36;
-
-  --md-sys-color-error:                   #b91c1c;
-  --md-sys-color-on-error:                #ffffff;
-  --md-sys-color-error-container:         #fee2e2;
-  --md-sys-color-on-error-container:      #7f1d1d;
-}
-
-/* ── Body ─────────────────────────────────────────────────────────────── */
+/* ── Body base ────────────────────────────────────────────────────────── */
 body {
-  background: var(--md-sys-color-background);
-  color: var(--md-sys-color-on-background);
+  font-family: var(--font-sans);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ── Scrollbar discreta ───────────────────────────────────────────────── */
+/* ── Scrollbar ────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--md-sys-color-outline-variant); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--md-sys-color-outline); }
+::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
-/* ── Selección de texto ───────────────────────────────────────────────── */
-::selection {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-}
+/* ── Selección ────────────────────────────────────────────────────────── */
+::selection { background: var(--accent-subtle); color: var(--accent-text); }
