@@ -46,6 +46,8 @@ tags:
     description: Históricos de valores de puntos — consulta con agregación TimescaleDB y exportación CSV
   - name: Configurator
     description: CRUD de áreas, dispositivos, puntos y usuarios desde la UI del Configurador. Requiere permiso `config:write`.
+  - name: AI
+    description: Agente del Integrador — chat con LLM, tools del sistema, configuración de proveedor y API key.
 
 paths:
   /health:
@@ -3144,4 +3146,148 @@ components:
           nullable: true
         error_message:
           type: string
+          nullable: true
+
+  /ai/config:
+    get:
+      operationId: get_ai_config
+      summary: Obtener configuración del agente
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Configuración actual (sin API key en claro)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: update_ai_config
+      summary: Guardar configuración del agente y API key
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIConfigUpdate"
+      responses:
+        "200":
+          description: Configuración guardada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /ai/config/api-key:
+    delete:
+      operationId: delete_ai_api_key
+      summary: Eliminar la API key guardada
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      responses:
+        "204":
+          description: API key eliminada
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /ai/chat:
+    post:
+      operationId: ai_chat
+      summary: Enviar mensaje al agente del integrador
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIChatRequest"
+      responses:
+        "200":
+          description: Respuesta del agente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIChatResponse"
+        "422":
+          description: API key no configurada
+        "504":
+          description: Timeout del agente (30s)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    AIConfigResponse:
+      type: object
+      required:
+        - provider
+        - model
+        - has_api_key
+      properties:
+        provider:
+          type: string
+          enum: [claude, openai]
+        model:
+          type: string
+        has_api_key:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AIConfigUpdate:
+      type: object
+      required:
+        - provider
+        - model
+        - api_key
+      properties:
+        provider:
+          type: string
+          enum: [claude, openai]
+        model:
+          type: string
+        api_key:
+          type: string
+
+    AIChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        session_id:
+          type: string
+          nullable: true
+
+    AIChatResponse:
+      type: object
+      required:
+        - reply
+      properties:
+        reply:
+          type: string
+        tool_calls:
+          type: array
+          items:
+            type: object
           nullable: true
