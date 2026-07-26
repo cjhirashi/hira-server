@@ -24,8 +24,8 @@ body, html, #root { margin: 0; padding: 0; height: 100%; }
   --text-muted:     #484f58;  /* placeholder, deshabilitado */
 
   /* Acento — Cyan SCADA */
-  --accent:        #22d3ee;   /* cyan-400 — links activos, primario */
-  --accent-hover:  #06b6d4;   /* cyan-500 — hover */
+  --accent:        #0891b2;   /* cyan-600 — links activos, primario */
+  --accent-hover:  #0e7490;   /* cyan-700 — hover */
   --accent-subtle: #0c2a33;   /* fondo de elementos activos */
   --accent-muted:  #0a1e25;   /* hover de acento */
   --accent-text:   #a5f3fc;   /* texto sobre fondo oscuro de acento */

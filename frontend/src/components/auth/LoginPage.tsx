@@ -1,9 +1,11 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login } from '../../services/api'
+import { useAuthStore } from '../../store/authStore'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const setToken = useAuthStore(s => s.setToken)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -15,7 +17,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const res = await login(email, password)
-      localStorage.setItem('hira-token', res.access_token)
+      setToken(res.access_token)
       navigate('/', { replace: true })
     } catch {
       setError('Credenciales incorrectas. Verifica tu email y contraseña.')

@@ -8,10 +8,28 @@ import HistoryPage from './components/historicals/HistoryPage'
 import ConfigPage from './components/config/ConfigPage'
 import LogicPage from './components/logic/LogicPage'
 import { AIChatPage } from './components/ai/AIChatPage'
+import { ClientAIChatPage } from './components/ai/ClientAIChatPage'
+import { useAuthStore } from './store/authStore'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('hira-token')
   if (!token) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('hira-token')
+  if (!token) return <Navigate to="/login" replace />
+  const isAdmin = useAuthStore.getState().isAdmin()
+  if (!isAdmin) return <Navigate to="/dashboard" replace />
+  return <>{children}</>
+}
+
+function OperadorRoute({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('hira-token')
+  if (!token) return <Navigate to="/login" replace />
+  const isOperador = useAuthStore.getState().isOperador()
+  if (!isOperador) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -39,10 +57,13 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="alarms" element={<AlarmsPage />} />
           <Route path="history" element={<HistoryPage />} />
-          <Route path="config" element={<ConfigPage />} />
-          <Route path="config/:section" element={<ConfigPage />} />
-          <Route path="logic" element={<LogicPage />} />
-          <Route path="ai" element={<AIChatPage />} />
+          <Route path="config" element={<AdminRoute><ConfigPage /></AdminRoute>} />
+          <Route path="config/:section" element={<AdminRoute><ConfigPage /></AdminRoute>} />
+          <Route path="logic" element={<AdminRoute><LogicPage /></AdminRoute>} />
+          <Route path="ai/integrador" element={<AdminRoute><AIChatPage /></AdminRoute>} />
+          <Route path="ai/cliente" element={<OperadorRoute><ClientAIChatPage /></OperadorRoute>} />
+          {/* Compat: /ai redirige a /ai/integrador (Admin) o /ai/cliente (Operador) */}
+          <Route path="ai" element={<Navigate to="/ai/integrador" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
