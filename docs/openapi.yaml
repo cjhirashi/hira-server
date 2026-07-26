@@ -44,6 +44,8 @@ tags:
     description: Definiciones de condiciones de alarma y eventos — ciclo de vida activo/reconocido/resuelto
   - name: Historicals
     description: Históricos de valores de puntos — consulta con agregación TimescaleDB y exportación CSV
+  - name: Configurator
+    description: CRUD de áreas, dispositivos, puntos y usuarios desde la UI del Configurador. Requiere permiso `config:write`.
 
 paths:
   /health:
@@ -813,6 +815,50 @@ paths:
                 error: "No se puede cambiar is_simulator a false sin validación explícita"
                 trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
+    delete:
+      operationId: delete_device
+      summary: Eliminar dispositivo
+      description: |
+        Elimina el dispositivo y todos sus puntos asociados (CASCADE).
+        Si el dispositivo tiene el polling activo, el worker lo ignorará en la
+        siguiente iteración. Requiere `config:write`.
+      tags:
+        - Configurator
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "204":
+          description: Dispositivo eliminado
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Dispositivo no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /devices/{device_id}/points:
     get:
       operationId: list_device_points
@@ -989,6 +1035,448 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "503":
           description: Dispositivo offline o error de comunicación
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /points:
+    post:
+      operationId: create_point
+      summary: Crear punto de datos
+      description: |
+        Registra un nuevo punto asociado a un dispositivo existente.
+        Requiere `config:write`.
+      tags:
+        - Configurator
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PointCreate"
+            example:
+              device_id: 1
+              name: "Temperatura impulsión"
+              object_type: "analogInput"
+              address: "AI:0"
+              unit: "°C"
+              writable: false
+              description: "Sensor de temperatura en conducto de impulsión"
+      responses:
+        "201":
+          description: Punto creado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointResponse"
+        "400":
+          description: Datos inválidos o device_id inexistente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /points/{point_id}:
+    get:
+      operationId: get_point
+      summary: Obtener punto por ID
+      description: Devuelve la configuración completa del punto. Requiere `points:read`.
+      tags:
+        - Points
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PointId"
+      responses:
+        "200":
+          description: Configuración del punto
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Punto no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    put:
+      operationId: update_point
+      summary: Actualizar punto
+      description: |
+        Actualiza la configuración del punto. No permite cambiar `device_id`.
+        Requiere `config:write`.
+      tags:
+        - Configurator
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PointId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PointUpdate"
+      responses:
+        "200":
+          description: Punto actualizado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Punto no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: delete_point
+      summary: Eliminar punto
+      description: |
+        Elimina el punto y sus históricos asociados (CASCADE).
+        Requiere `config:write`.
+      tags:
+        - Configurator
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PointId"
+      responses:
+        "204":
+          description: Punto eliminado
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Punto no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /areas:
+    get:
+      operationId: list_areas
+      summary: Listar áreas
+      description: Devuelve todas las áreas del proyecto. Requiere `config:read`.
+      tags:
+        - Configurator
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de áreas
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AreaResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: create_area
+      summary: Crear área
+      description: Crea una nueva área. El nombre debe ser único. Requiere `config:write`.
+      tags:
+        - Configurator
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AreaCreate"
+            example:
+              name: "Piso 3 — Sala de máquinas"
+              description: "Zona de equipos mecánicos en el tercer piso"
+      responses:
+        "201":
+          description: Área creada
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AreaResponse"
+        "400":
+          description: Nombre de área duplicado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /areas/{area_id}:
+    get:
+      operationId: get_area
+      summary: Obtener área por ID
+      tags:
+        - Configurator
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AreaId"
+      responses:
+        "200":
+          description: Datos del área
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AreaResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Área no encontrada
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    put:
+      operationId: update_area
+      summary: Actualizar área
+      description: Actualiza nombre y/o descripción del área. Requiere `config:write`.
+      tags:
+        - Configurator
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AreaId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AreaCreate"
+      responses:
+        "200":
+          description: Área actualizada
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AreaResponse"
+        "400":
+          description: Nombre duplicado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Área no encontrada
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: delete_area
+      summary: Eliminar área
+      description: |
+        Elimina el área. Si hay dispositivos o puntos con `area_id` apuntando
+        a este área, la FK se pondrá a NULL (SET NULL). Requiere `config:write`.
+      tags:
+        - Configurator
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AreaId"
+      responses:
+        "204":
+          description: Área eliminada
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Área no encontrada
           headers:
             X-Trace-ID:
               $ref: "#/components/headers/XTraceID"
@@ -1195,6 +1683,67 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Simulador no encontrado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{user_id}/disable:
+    patch:
+      operationId: disable_user
+      summary: Desactivar usuario (endpoint dedicado)
+      description: |
+        Marca al usuario como inactivo. Alternativa más explícita a `DELETE /users/{id}`.
+        Invalida el caché RBAC. Requiere `config:write`.
+        Un Admin no puede desactivarse a sí mismo.
+      tags:
+        - Configurator
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: Usuario desactivado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Intento de auto-desactivación
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: No autenticado
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Usuario no encontrado
           headers:
             X-Trace-ID:
               $ref: "#/components/headers/XTraceID"
@@ -1506,6 +2055,15 @@ components:
         type: integer
         minimum: 1
       description: ID numérico del simulador (dispositivo con is_simulator=true)
+
+    AreaId:
+      name: area_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: ID numérico del área
 
   schemas:
     # ── Monitor ──────────────────────────────────────────────────────────────
@@ -2059,6 +2617,172 @@ components:
           type: string
           format: uuid
           description: Trace ID del request para correlación con logs
+
+    # ── Configurator ─────────────────────────────────────────────────────────
+
+    AreaCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: "Piso 3 — Sala de máquinas"
+        description:
+          type: string
+          maxLength: 500
+          default: ""
+          example: "Zona de equipos mecánicos en el tercer piso"
+
+    AreaResponse:
+      type: object
+      required:
+        - id
+        - name
+        - description
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Piso 3 — Sala de máquinas"
+        description:
+          type: string
+          example: "Zona de equipos mecánicos en el tercer piso"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-07-25T10:00:00Z"
+
+    PointCreate:
+      type: object
+      required:
+        - device_id
+        - name
+        - object_type
+        - address
+      properties:
+        device_id:
+          type: integer
+          minimum: 1
+          description: ID del dispositivo al que pertenece el punto
+          example: 1
+        name:
+          type: string
+          maxLength: 255
+          example: "Temperatura impulsión"
+        description:
+          type: string
+          maxLength: 500
+          default: ""
+          example: "Sensor de temperatura en conducto de impulsión"
+        object_type:
+          type: string
+          maxLength: 100
+          example: "analogInput"
+        address:
+          type: string
+          maxLength: 255
+          description: Dirección del objeto según protocolo (ej. "AI:0", "400001")
+          example: "AI:0"
+        unit:
+          type: string
+          maxLength: 50
+          default: ""
+          example: "°C"
+        writable:
+          type: boolean
+          default: false
+        log_enabled:
+          type: boolean
+          default: false
+        history_interval_seconds:
+          type: integer
+          minimum: 1
+          default: 60
+          description: Intervalo mínimo entre registros históricos en segundos
+        area_id:
+          type: integer
+          nullable: true
+          description: ID del área a la que pertenece el punto (opcional)
+          example: 1
+
+    PointUpdate:
+      type: object
+      description: Todos los campos son opcionales — solo se actualizan los enviados
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 500
+        unit:
+          type: string
+          maxLength: 50
+        writable:
+          type: boolean
+        log_enabled:
+          type: boolean
+        history_interval_seconds:
+          type: integer
+          minimum: 1
+        area_id:
+          type: integer
+          nullable: true
+
+    PointResponse:
+      type: object
+      required:
+        - id
+        - device_id
+        - name
+        - object_type
+        - address
+        - writable
+        - log_enabled
+        - history_interval_seconds
+      properties:
+        id:
+          type: integer
+          example: 42
+        device_id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Temperatura impulsión"
+        description:
+          type: string
+          example: "Sensor de temperatura en conducto de impulsión"
+        object_type:
+          type: string
+          example: "analogInput"
+        address:
+          type: string
+          example: "AI:0"
+        unit:
+          type: string
+          example: "°C"
+        writable:
+          type: boolean
+          example: false
+        log_enabled:
+          type: boolean
+          example: false
+        history_interval_seconds:
+          type: integer
+          example: 60
+        area_id:
+          type: integer
+          nullable: true
+          example: 1
+        area_name:
+          type: string
+          nullable: true
+          example: "Piso 3 — Sala de máquinas"
 
     PointHistoryRecord:
       type: object
