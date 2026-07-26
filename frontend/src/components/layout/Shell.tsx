@@ -65,7 +65,7 @@ export default function Shell() {
           </NavLink>
         ))}
       </nav>
-      <main style={{ flex: 1, overflow: 'auto', padding: '2rem' }}>
+      <main style={{ flex: 1, overflow: 'auto', padding: '2rem', background: 'var(--md-sys-color-background)', color: 'var(--md-sys-color-on-background)' }}>
         <Outlet />
       </main>
     </div>

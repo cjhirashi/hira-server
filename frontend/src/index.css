@@ -1,0 +1,101 @@
+/* ── Reset básico ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Tema oscuro (por defecto) ────────────────────────────────────────── */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Superficie y fondo */
+  --md-sys-color-background:             #0f0f1a;
+  --md-sys-color-on-background:          #e3e1ec;
+  --md-sys-color-surface:                #1a1a2e;
+  --md-sys-color-on-surface:             #e3e1ec;
+  --md-sys-color-surface-variant:        #1e1e35;
+  --md-sys-color-on-surface-variant:     #c4c2d4;
+  --md-sys-color-surface-container:      #1c1c30;
+  --md-sys-color-surface-container-high: #252540;
+  --md-sys-color-surface-container-low:  #161626;
+  --md-sys-color-outline:                #6f6d80;
+  --md-sys-color-outline-variant:        #2e2e45;
+  --md-sys-color-inverse-surface:        #e3e1ec;
+  --md-sys-color-inverse-on-surface:     #1a1a2e;
+
+  /* Primario — Cyan */
+  --md-sys-color-primary:                #00b4d8;
+  --md-sys-color-on-primary:             #003547;
+  --md-sys-color-primary-container:      #00485e;
+  --md-sys-color-on-primary-container:   #b3ecff;
+
+  /* Secundario */
+  --md-sys-color-secondary:              #b4c5d6;
+  --md-sys-color-on-secondary:           #1f3040;
+  --md-sys-color-secondary-container:    #354759;
+  --md-sys-color-on-secondary-container: #d0e5f7;
+
+  /* Error */
+  --md-sys-color-error:                  #cf6679;
+  --md-sys-color-on-error:               #650027;
+  --md-sys-color-error-container:        #8c1533;
+  --md-sys-color-on-error-container:     #ffd9de;
+
+  /* Tokens de alarma — no cambian con el tema */
+  --hira-alarm-critical:  #EF4444;
+  --hira-alarm-high:      #F97316;
+  --hira-alarm-medium:    #EAB308;
+  --hira-alarm-low:       #3B82F6;
+  --hira-status-ok:       #22C55E;
+  --hira-status-offline:  #6B7280;
+  --hira-status-writing:  #A78BFA;
+}
+
+/* ── Tema claro ───────────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --md-sys-color-background:             #f8f9ff;
+  --md-sys-color-on-background:          #1a1a2e;
+  --md-sys-color-surface:                #eef0fb;
+  --md-sys-color-on-surface:             #1a1a2e;
+  --md-sys-color-surface-variant:        #e1e2f0;
+  --md-sys-color-on-surface-variant:     #44455a;
+  --md-sys-color-surface-container:      #e8eaf6;
+  --md-sys-color-surface-container-high: #dddff0;
+  --md-sys-color-surface-container-low:  #f2f3fc;
+  --md-sys-color-outline:                #75748a;
+  --md-sys-color-outline-variant:        #c5c6d8;
+
+  --md-sys-color-primary:                #006882;
+  --md-sys-color-on-primary:             #ffffff;
+  --md-sys-color-primary-container:      #b3ecff;
+  --md-sys-color-on-primary-container:   #001f2a;
+
+  --md-sys-color-secondary:              #4a6274;
+  --md-sys-color-on-secondary:           #ffffff;
+  --md-sys-color-secondary-container:    #cde7fb;
+  --md-sys-color-on-secondary-container: #071e2c;
+
+  --md-sys-color-error:                  #ba1a1a;
+  --md-sys-color-on-error:               #ffffff;
+  --md-sys-color-error-container:        #ffdad6;
+  --md-sys-color-on-error-container:     #410002;
+}
+
+/* ── Body usa el fondo del tema ───────────────────────────────────────── */
+body {
+  background: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
+}
+
+/* ── Scrollbar discreta ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--md-sys-color-outline-variant); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--md-sys-color-outline); }
