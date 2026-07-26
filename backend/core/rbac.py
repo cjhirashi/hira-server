@@ -32,20 +32,23 @@ _ROLE_PERMISSIONS: dict[str, list[str]] = {
         "logic:read", "logic:write",
         "historicals:read",
         "backup:read", "backup:write",
+        "config:read", "config:write",
     ],
     "Operador": [
         "users:read",
         "points:read", "points:write",
-        "devices:read",
+        "devices:read", "devices:write",
         "alarms:read", "alarms:write",
         "logic:read",
         "historicals:read",
+        "config:read", "config:write",
     ],
     "Visor": [
         "points:read",
         "devices:read",
         "alarms:read",
         "historicals:read",
+        "config:read",
     ],
 }
 
