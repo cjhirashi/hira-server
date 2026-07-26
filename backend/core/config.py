@@ -63,6 +63,22 @@ class Settings(BaseSettings):
         return v
 
     @property
+    def deploy_mode(self) -> str:
+        return self.hira_deploy_mode
+
+    @property
+    def sync_database_url(self) -> str:
+        if self.hira_deploy_mode == "studio":
+            return "sqlite+pysqlite:///./hira_studio.db"
+        return self.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+
+    @property
+    def async_database_url(self) -> str:
+        if self.hira_deploy_mode == "studio":
+            return "sqlite+aiosqlite:///./hira_studio.db"
+        return self.database_url
+
+    @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 

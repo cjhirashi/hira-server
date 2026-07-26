@@ -15,7 +15,7 @@ from core.logger import get_logger
 
 logger = get_logger(__name__)
 
-_SYNC_URL = settings.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+_SYNC_URL = settings.sync_database_url
 
 
 def _get_engine():
