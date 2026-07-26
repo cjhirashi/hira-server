@@ -24,6 +24,21 @@ class DeviceService:
             ...
 ```
 
-## Contenido actual
+## Archivos
 
-Vacío en Sprint 0. Los servicios se crean a partir de Sprint 1 (Auth + RBAC).
+| Archivo | Propósito |
+|---|---|
+| `alarm_engine.py` | Motor de evaluación de condiciones de alarma |
+
+## alarm_engine.py
+
+`AlarmEngine` evalúa si un valor de punto cumple una condición definida en `AlarmDefinition`.
+
+**Ciclo de vida de una alarma:**
+1. Valor supera umbral → crea `AlarmEvent(status="active")` en PostgreSQL → publica en `alarm:updates` Redis
+2. Valor ya no supera umbral → `AlarmEvent.status = "resolved"` → publica en `alarm:updates` Redis
+3. Usuario reconoce → router `/alarms/{id}/acknowledge` → `status = "acknowledged"`
+
+**Caché:** Las definiciones habilitadas por `point_id` se cachean en memoria (TTL 60s) para no consultar la BD en cada ciclo de evaluación (cada 10s). Se invalida llamando `alarm_engine.invalidate_cache(point_id)` al crear/modificar una definición.
+
+**Condiciones soportadas:** `gt` (>), `lt` (<), `eq` (==), `between` (threshold ≤ value ≤ threshold_high)
