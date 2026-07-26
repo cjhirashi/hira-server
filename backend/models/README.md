@@ -10,7 +10,8 @@ users ──< alarms (acknowledged_by)
 users ──< logic_scripts (created_by)
 users ──< engineering_sessions (integrator_user_id)
 
-devices ──< points ──< alarm_definitions ──< alarms
+areas ──< devices ──< points ──< alarm_definitions ──< alarms
+areas ──< points (directo, para puntos sin dispositivo asociado a un área)
                   └──< point_history  (hypertable TimescaleDB)
 
 logic_scripts ──< script_executions
@@ -29,6 +30,7 @@ engineering_sessions
 | `roles.py` | `roles` | Roles fijos: Admin, Operador, Visor |
 | `permissions.py` | `permissions` | Permisos por rol, módulo y área |
 | `user_roles.py` | `user_roles` | Relación N:M usuarios ↔ roles |
+| `areas.py` | `areas` | Áreas del proyecto (Sprint 7 — Configurador) |
 | `devices.py` | `devices` | Dispositivos de campo (BACnet, Modbus, MQTT, simuladores) |
 | `points.py` | `points` | Puntos de datos dentro de cada dispositivo |
 | `alarm_definitions.py` | `alarm_definitions` | Definiciones de condiciones de alarma |

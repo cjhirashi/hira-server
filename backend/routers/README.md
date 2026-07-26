@@ -18,6 +18,10 @@ Endpoints FastAPI. Cada router implementa el contrato definido en `docs/openapi.
 | `devices.py` | `/api/v1/devices` | CRUD de dispositivos físicos + scan de red |
 | `points.py` | `/api/v1/points` | Lectura y escritura de valores de puntos desde Redis / adaptadores |
 | `simulators.py` | `/api/v1/simulators` | Ciclo de vida de simuladores: crear, start, stop |
+| `alarm_definitions.py` | `/api/v1/alarm-definitions` | CRUD de definiciones de alarma |
+| `alarms.py` | `/api/v1/alarms` | Consulta y reconocimiento de eventos de alarma |
+| `history.py` | `/api/v1/points/{id}/history` | Históricos con agregación TimescaleDB + CSV |
+| `areas.py` | `/api/v1/areas` | CRUD de áreas (Sprint 7 — Configurador) |
 | `mimics.py` | `/api/v1/mimics` | CRUD de mimics HVAC: canvas, elements, connections |
 | `ws.py` | `/ws` | WebSocket con autenticación JWT vía query param `?token=` |
 
