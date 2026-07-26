@@ -95,8 +95,8 @@ app.add_middleware(
 
 # ── Routers ────────────────────────────────────────────────────────────────
 app.include_router(monitor_router)
-app.include_router(auth_router)
-app.include_router(users_router)
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(users_router, prefix="/api/v1")
 app.include_router(devices_router, prefix="/api/v1")
 app.include_router(points_router, prefix="/api/v1")
 app.include_router(simulators_router, prefix="/api/v1")

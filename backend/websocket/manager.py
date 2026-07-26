@@ -37,6 +37,7 @@ class ConnectionManager:
             "data": {
                 "client_id": client_id,
                 "server_time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                "active_points": self.client_count,
             },
         }
         await websocket.send_text(json.dumps(ack))
