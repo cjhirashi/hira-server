@@ -67,14 +67,14 @@ function SetpointRow({ element }: SetpointRowProps) {
         alignItems: 'center',
         gap: 12,
         padding: '8px 0',
-        borderBottom: '1px solid var(--md-sys-color-outline-variant)',
+        borderBottom: '1px solid var(--border-subtle)',
       }}
     >
       <span
         style={{
           flex: 1,
           fontSize: 13,
-          color: 'var(--md-sys-color-on-surface)',
+          color: 'var(--text-primary)',
         }}
       >
         {element.label ?? element.id}
@@ -103,9 +103,9 @@ function SetpointRow({ element }: SetpointRowProps) {
           width: 80,
           padding: '4px 8px',
           borderRadius: 4,
-          border: '1px solid var(--md-sys-color-outline)',
-          background: 'var(--md-sys-color-surface-variant)',
-          color: 'var(--md-sys-color-on-surface-variant)',
+          border: '1px solid var(--border-default)',
+          background: 'var(--bg-elevated)',
+          color: 'var(--text-secondary)',
           fontSize: 13,
         }}
       />
@@ -116,8 +116,8 @@ function SetpointRow({ element }: SetpointRowProps) {
           padding: '4px 12px',
           borderRadius: 4,
           border: 'none',
-          background: 'var(--md-sys-color-primary)',
-          color: 'var(--md-sys-color-on-primary)',
+          background: 'var(--accent)',
+          color: '#000',
           cursor: writing || !input ? 'not-allowed' : 'pointer',
           fontSize: 13,
           opacity: writing || !input ? 0.5 : 1,
@@ -149,7 +149,7 @@ export function ControlPanel({ elements }: ControlPanelProps) {
   return (
     <div
       style={{
-        background: 'var(--md-sys-color-surface-container)',
+        background: 'var(--bg-surface)',
         borderRadius: 8,
         padding: '12px 16px',
       }}
@@ -159,7 +159,7 @@ export function ControlPanel({ elements }: ControlPanelProps) {
           margin: '0 0 8px',
           fontSize: 14,
           fontWeight: 600,
-          color: 'var(--md-sys-color-on-surface-variant)',
+          color: 'var(--text-secondary)',
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
         }}
