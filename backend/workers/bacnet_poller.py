@@ -27,14 +27,18 @@ def poll_all_devices() -> dict:
 
 
 async def _async_poll_all() -> dict:
+    import redis.asyncio as aioredis
     from adapters.factory import get_db_adapter, get_protocol_adapter
-    from core.redis import get_redis
+    from core.config import settings
     from models.devices import Device
     from models.points import Point
     from sqlalchemy import select, update
 
     adapter = get_db_adapter()
-    redis = await get_redis()
+    redis = aioredis.from_url(
+        settings.redis_url, encoding="utf-8", decode_responses=True,
+        socket_connect_timeout=5, socket_timeout=5,
+    )
     results: dict = {"polled": 0, "errors": 0}
 
     async with adapter.get_session() as session:
@@ -42,26 +46,30 @@ async def _async_poll_all() -> dict:
             select(Device).where(Device.protocol == "bacnet", Device.status != "offline")
         )).scalars().all()
 
-    for device in devices:
-        bacnet = get_protocol_adapter("bacnet")
-        try:
-            await bacnet.connect(device.config_json or {})
-            await _poll_device(bacnet, device, redis, adapter)
-            results["polled"] += 1
-        except Exception as exc:
-            logger.error("Poll device error", extra={"device_id": device.id, "error": str(exc)})
-            results["errors"] += 1
-        finally:
+    try:
+        for device in devices:
+            bacnet = get_protocol_adapter("bacnet")
             try:
-                await bacnet.disconnect()
-            except Exception:
-                pass
+                await bacnet.connect(device.config_json or {})
+                await _poll_device(bacnet, device, redis, adapter)
+                results["polled"] += 1
+            except Exception as exc:
+                logger.error("Poll device error", extra={"device_id": device.id, "error": str(exc)})
+                results["errors"] += 1
+            finally:
+                try:
+                    await bacnet.disconnect()
+                except Exception:
+                    pass
+    finally:
+        await redis.aclose()
 
     return results
 
 
 async def _poll_device(bacnet, device, redis, db_adapter) -> None:
     from models.points import Point
+    from services.history_writer import history_writer
     from sqlalchemy import select, update
 
     async with db_adapter.get_session() as session:
@@ -73,18 +81,33 @@ async def _poll_device(bacnet, device, redis, db_adapter) -> None:
     for point in points:
         result = await bacnet.read_point(str(device.id), point.address or "")
         quality = result.get("quality", "bad")
+        ts_str = result.get("timestamp", datetime.now(timezone.utc).isoformat())
+        ts = datetime.fromisoformat(ts_str) if isinstance(ts_str, str) else datetime.now(timezone.utc)
+        value = result.get("value")
 
         entry = json.dumps({
             "id": point.id,
             "name": point.name,
-            "value": result.get("value"),
+            "value": value,
             "unit": point.unit,
             "quality": quality,
-            "timestamp": result.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            "timestamp": ts_str,
         })
 
         await redis.setex(f"point:{point.id}:value", _POINT_TTL, entry)
         await redis.publish(f"point:{point.id}:updates", entry)
+
+        if value is not None and quality != "bad":
+            async with db_adapter.get_session() as session:
+                await history_writer.record(
+                    point_id=point.id,
+                    value=float(value),
+                    quality=quality,
+                    timestamp=ts,
+                    interval_seconds=point.history_interval_seconds,
+                    session=session,
+                    redis=redis,
+                )
 
         if quality == "bad":
             fail_count += 1

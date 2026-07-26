@@ -18,6 +18,7 @@ from routers.simulators import router as simulators_router
 from routers.users import router as users_router
 from routers.alarm_definitions import router as alarm_definitions_router
 from routers.alarms import router as alarms_router
+from routers.history import router as history_router
 from routers.mimics import router as mimics_router
 from routers.ws import router as ws_router
 from websocket.redis_subscriber import start_subscriber, stop_subscriber
@@ -219,5 +220,6 @@ app.include_router(points_router, prefix="/api/v1")
 app.include_router(simulators_router, prefix="/api/v1")
 app.include_router(alarm_definitions_router, prefix="/api/v1")
 app.include_router(alarms_router, prefix="/api/v1")
+app.include_router(history_router, prefix="/api/v1")
 app.include_router(mimics_router, prefix="/api/v1")
 app.include_router(ws_router)

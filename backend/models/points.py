@@ -18,6 +18,7 @@ class Point(Base):
     writable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     log_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     log_interval_ms: Mapped[int] = mapped_column(Integer, default=60000, nullable=False)
+    history_interval_seconds: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     area: Mapped[str] = mapped_column(String(255), nullable=False, default="")
 
     device: Mapped["Device"] = relationship(back_populates="points")  # noqa: F821
