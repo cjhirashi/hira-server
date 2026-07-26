@@ -1,4 +1,4 @@
-/* ── Reset básico ─────────────────────────────────────────────────────── */
+/* ── Reset ────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
 body, html, #root {
@@ -8,87 +8,128 @@ body, html, #root {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* ── Tema oscuro (por defecto) ────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════
+   TEMA OSCURO  —  MD3 · Primary Cyan · Surfaces Slate
+   Paleta Slate: https://tailwindcss.com/docs/customizing-colors#slate
+   ═══════════════════════════════════════════════════════════════════════ */
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Superficie y fondo */
-  --md-sys-color-background:             #0f0f1a;
-  --md-sys-color-on-background:          #e3e1ec;
-  --md-sys-color-surface:                #1a1a2e;
-  --md-sys-color-on-surface:             #e3e1ec;
-  --md-sys-color-surface-variant:        #1e1e35;
-  --md-sys-color-on-surface-variant:     #c4c2d4;
-  --md-sys-color-surface-container:      #1c1c30;
-  --md-sys-color-surface-container-high: #252540;
-  --md-sys-color-surface-container-low:  #161626;
-  --md-sys-color-outline:                #6f6d80;
-  --md-sys-color-outline-variant:        #2e2e45;
-  --md-sys-color-inverse-surface:        #e3e1ec;
-  --md-sys-color-inverse-on-surface:     #1a1a2e;
+  /* Fondo de la ventana */
+  --md-sys-color-background:              #0f172a;   /* slate-900 */
+  --md-sys-color-on-background:           #e2e8f0;   /* slate-200 */
 
-  /* Primario — Cyan */
-  --md-sys-color-primary:                #00b4d8;
-  --md-sys-color-on-primary:             #003547;
-  --md-sys-color-primary-container:      #00485e;
-  --md-sys-color-on-primary-container:   #b3ecff;
+  /* Superficie principal (cards, sidebar, paneles) */
+  --md-sys-color-surface:                 #1e293b;   /* slate-800 */
+  --md-sys-color-on-surface:              #e2e8f0;   /* slate-200 */
 
-  /* Secundario */
-  --md-sys-color-secondary:              #b4c5d6;
-  --md-sys-color-on-secondary:           #1f3040;
-  --md-sys-color-secondary-container:    #354759;
-  --md-sys-color-on-secondary-container: #d0e5f7;
+  /* Superficie variante (chips, tooltips) */
+  --md-sys-color-surface-variant:         #334155;   /* slate-700 */
+  --md-sys-color-on-surface-variant:      #94a3b8;   /* slate-400 */
+
+  /* Contenedores de superficie */
+  --md-sys-color-surface-container-lowest:  #0b1120;  /* más oscuro que slate-900 */
+  --md-sys-color-surface-container-low:     #162032;  /* entre slate-900 y slate-800 */
+  --md-sys-color-surface-container:         #1e293b;  /* slate-800 */
+  --md-sys-color-surface-container-high:    #243145;  /* slate-800 + */
+  --md-sys-color-surface-container-highest: #2d3d52;  /* slate-700 – */
+
+  /* Bordes */
+  --md-sys-color-outline:                 #475569;   /* slate-600 */
+  --md-sys-color-outline-variant:         #334155;   /* slate-700 */
+
+  /* Inverso */
+  --md-sys-color-inverse-surface:         #e2e8f0;
+  --md-sys-color-inverse-on-surface:      #1e293b;
+
+  /* Primario — Cyan MD3 */
+  --md-sys-color-primary:                 #22d3ee;   /* cyan-400 */
+  --md-sys-color-on-primary:              #003544;
+  --md-sys-color-primary-container:       #004f65;   /* cyan-900 */
+  --md-sys-color-on-primary-container:    #a5f3fc;   /* cyan-200 */
+  --md-sys-color-primary-fixed:           #a5f3fc;
+  --md-sys-color-primary-fixed-dim:       #67e8f9;
+  --md-sys-color-on-primary-fixed:        #001f2a;
+  --md-sys-color-on-primary-fixed-variant:#004f65;
+
+  /* Secundario — Slate-Cyan blend */
+  --md-sys-color-secondary:               #7dd3e0;
+  --md-sys-color-on-secondary:            #003b46;
+  --md-sys-color-secondary-container:     #00566a;
+  --md-sys-color-on-secondary-container:  #b2ecf4;
+
+  /* Terciario */
+  --md-sys-color-tertiary:                #7eb8cc;
+  --md-sys-color-on-tertiary:             #003547;
+  --md-sys-color-tertiary-container:      #004c63;
+  --md-sys-color-on-tertiary-container:   #b3d8ea;
 
   /* Error */
-  --md-sys-color-error:                  #cf6679;
-  --md-sys-color-on-error:               #650027;
-  --md-sys-color-error-container:        #8c1533;
-  --md-sys-color-on-error-container:     #ffd9de;
+  --md-sys-color-error:                   #f28b82;
+  --md-sys-color-on-error:                #601410;
+  --md-sys-color-error-container:         #8c1d18;
+  --md-sys-color-on-error-container:      #f9dedc;
 
-  /* Tokens de alarma — no cambian con el tema */
-  --hira-alarm-critical:  #EF4444;
-  --hira-alarm-high:      #F97316;
-  --hira-alarm-medium:    #EAB308;
-  --hira-alarm-low:       #3B82F6;
-  --hira-status-ok:       #22C55E;
-  --hira-status-offline:  #6B7280;
-  --hira-status-writing:  #A78BFA;
+  /* Tokens de alarma — estables, no cambian con el tema */
+  --hira-alarm-critical:  #ef4444;
+  --hira-alarm-high:      #f97316;
+  --hira-alarm-medium:    #eab308;
+  --hira-alarm-low:       #3b82f6;
+  --hira-status-ok:       #22c55e;
+  --hira-status-offline:  #64748b;   /* slate-500 */
+  --hira-status-writing:  #a78bfa;
 }
 
-/* ── Tema claro ───────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════
+   TEMA CLARO  —  MD3 · Primary Cyan · Surfaces Slate-light
+   ═══════════════════════════════════════════════════════════════════════ */
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --md-sys-color-background:             #f8f9ff;
-  --md-sys-color-on-background:          #1a1a2e;
-  --md-sys-color-surface:                #eef0fb;
-  --md-sys-color-on-surface:             #1a1a2e;
-  --md-sys-color-surface-variant:        #e1e2f0;
-  --md-sys-color-on-surface-variant:     #44455a;
-  --md-sys-color-surface-container:      #e8eaf6;
-  --md-sys-color-surface-container-high: #dddff0;
-  --md-sys-color-surface-container-low:  #f2f3fc;
-  --md-sys-color-outline:                #75748a;
-  --md-sys-color-outline-variant:        #c5c6d8;
+  --md-sys-color-background:              #f8fafc;   /* slate-50 */
+  --md-sys-color-on-background:           #0f172a;   /* slate-900 */
 
-  --md-sys-color-primary:                #006882;
-  --md-sys-color-on-primary:             #ffffff;
-  --md-sys-color-primary-container:      #b3ecff;
-  --md-sys-color-on-primary-container:   #001f2a;
+  --md-sys-color-surface:                 #f1f5f9;   /* slate-100 */
+  --md-sys-color-on-surface:              #0f172a;
 
-  --md-sys-color-secondary:              #4a6274;
-  --md-sys-color-on-secondary:           #ffffff;
-  --md-sys-color-secondary-container:    #cde7fb;
-  --md-sys-color-on-secondary-container: #071e2c;
+  --md-sys-color-surface-variant:         #e2e8f0;   /* slate-200 */
+  --md-sys-color-on-surface-variant:      #475569;   /* slate-600 */
 
-  --md-sys-color-error:                  #ba1a1a;
-  --md-sys-color-on-error:               #ffffff;
-  --md-sys-color-error-container:        #ffdad6;
-  --md-sys-color-on-error-container:     #410002;
+  --md-sys-color-surface-container-lowest:  #ffffff;
+  --md-sys-color-surface-container-low:     #f8fafc;
+  --md-sys-color-surface-container:         #f1f5f9;
+  --md-sys-color-surface-container-high:    #e2e8f0;
+  --md-sys-color-surface-container-highest: #cbd5e1;  /* slate-300 */
+
+  --md-sys-color-outline:                 #94a3b8;   /* slate-400 */
+  --md-sys-color-outline-variant:         #cbd5e1;   /* slate-300 */
+
+  --md-sys-color-inverse-surface:         #1e293b;
+  --md-sys-color-inverse-on-surface:      #f1f5f9;
+
+  --md-sys-color-primary:                 #0891b2;   /* cyan-600 */
+  --md-sys-color-on-primary:              #ffffff;
+  --md-sys-color-primary-container:       #cffafe;   /* cyan-100 */
+  --md-sys-color-on-primary-container:    #083344;
+
+  --md-sys-color-secondary:              #0e7490;    /* cyan-700 */
+  --md-sys-color-on-secondary:            #ffffff;
+  --md-sys-color-secondary-container:     #e0f7fa;
+  --md-sys-color-on-secondary-container:  #003544;
+
+  --md-sys-color-tertiary:                #155e75;
+  --md-sys-color-on-tertiary:             #ffffff;
+  --md-sys-color-tertiary-container:      #b2f0fb;
+  --md-sys-color-on-tertiary-container:   #002a36;
+
+  --md-sys-color-error:                   #b91c1c;
+  --md-sys-color-on-error:                #ffffff;
+  --md-sys-color-error-container:         #fee2e2;
+  --md-sys-color-on-error-container:      #7f1d1d;
 }
 
-/* ── Body usa el fondo del tema ───────────────────────────────────────── */
+/* ── Body ─────────────────────────────────────────────────────────────── */
 body {
   background: var(--md-sys-color-background);
   color: var(--md-sys-color-on-background);
@@ -99,3 +140,9 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--md-sys-color-outline-variant); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--md-sys-color-outline); }
+
+/* ── Selección de texto ───────────────────────────────────────────────── */
+::selection {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
