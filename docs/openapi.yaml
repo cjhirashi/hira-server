@@ -3234,6 +3234,98 @@ components:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /ai/integrador/chat:
+    post:
+      operationId: ai_integrador_chat
+      summary: Enviar mensaje al agente del integrador (Admin)
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIChatRequest"
+      responses:
+        "200":
+          description: Respuesta del agente integrador
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIChatResponse"
+        "422":
+          description: API key no configurada
+        "504":
+          description: Timeout del agente (30s)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /ai/cliente/chat:
+    post:
+      operationId: ai_cliente_chat
+      summary: Enviar mensaje al agente del cliente (Admin + Operador)
+      description: |
+        Agente de solo lectura + reconocimiento de alarmas. No puede
+        modificar configuración ni generar scripts. Accesible para
+        roles Admin y Operador.
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIChatRequest"
+      responses:
+        "200":
+          description: Respuesta del agente cliente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIChatResponse"
+        "422":
+          description: API key no configurada
+        "504":
+          description: Timeout del agente (30s)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /system/mode:
+    get:
+      operationId: system_get_mode
+      summary: Modo de despliegue del servidor
+      description: |
+        Devuelve el modo de despliegue actual (`server` o `studio`),
+        el tipo de base de datos y la versión del servidor.
+        Endpoint público — no requiere autenticación.
+      tags: [Monitor]
+      responses:
+        "200":
+          description: Modo de despliegue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [mode, db_type, version]
+                properties:
+                  mode:
+                    type: string
+                    enum: [server, studio]
+                    description: Modo de despliegue activo
+                  db_type:
+                    type: string
+                    enum: [postgresql, sqlite]
+                    description: Tipo de base de datos en uso
+                  version:
+                    type: string
+                    example: "0.10c"
+
     AIConfigResponse:
       type: object
       required:

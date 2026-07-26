@@ -1,0 +1,57 @@
+# HIRA STUDIO — Modo offline para integradores
+#
+# Uso: docker compose -f docker-compose.studio.yml up -d
+#
+# Limitaciones vs modo Server:
+#   - Máximo 1 dispositivo real activo simultáneamente (ADR-016)
+#   - Sin históricos de largo plazo (SQLite, no TimescaleDB)
+#   - Sin motor de alarmas automático (no celery-alarm)
+#   - Sin lógica schedulada (no celery-beat)
+#
+# Requiere: .env con JWT_SECRET, AI_ENCRYPTION_KEY, MQTT_USER, MQTT_PASSWORD
+
+services:
+  backend:
+    build: ./backend
+    environment:
+      - HIRA_DEPLOY_MODE=studio
+      - DATABASE_URL=sqlite+aiosqlite:///./hira_studio.db
+      - REDIS_URL=redis://redis:6379/0
+      - MQTT_BROKER_HOST=mosquitto
+      - MQTT_BROKER_PORT=1883
+    env_file:
+      - .env.studio
+    volumes:
+      - hira_studio_data:/app/hira_studio.db
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - mosquitto
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/config/passwd:/mosquitto/config/passwd
+    ports:
+      - "1883:1883"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  hira_studio_data:
