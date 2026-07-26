@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Shell from './components/layout/Shell'
 import LoginPage from './components/auth/LoginPage'
+import { DashboardPage } from './components/dashboard/DashboardPage'
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -41,7 +42,7 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<PlaceholderPage title="Dashboard" />} />
+          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="alarms" element={<PlaceholderPage title="Alarmas" />} />
           <Route path="history" element={<PlaceholderPage title="Históricos" />} />
           <Route path="config" element={<PlaceholderPage title="Configuración" />} />
