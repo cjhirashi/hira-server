@@ -49,6 +49,7 @@ export default function App() {
           <Route path="alarms" element={<AlarmsPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="config" element={<ConfigPage />} />
+          <Route path="config/:section" element={<ConfigPage />} />
           <Route path="logic" element={<PlaceholderPage title="Lógica" />} />
           <Route path="ai" element={<PlaceholderPage title="IA del Integrador" />} />
         </Route>

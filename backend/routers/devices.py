@@ -166,6 +166,7 @@ async def update_device(
 @router.delete("/{device_id}", status_code=204)
 async def delete_device(
     device_id: int,
+    force: bool = False,
     _: dict[str, Any] = Depends(require_permission("config:write")),
 ) -> None:
     adapter = get_db_adapter()
@@ -173,8 +174,19 @@ async def delete_device(
         device = await session.get(Device, device_id)
         if device is None:
             raise HTTPException(status_code=404, detail="Dispositivo no encontrado")
+
+        if not force:
+            point_count = await session.scalar(
+                select(Point).where(Point.device_id == device_id).limit(1)
+            )
+            if point_count is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="El dispositivo tiene puntos activos. Use ?force=true para eliminar junto con sus puntos.",
+                )
+
         await session.delete(device)
-    logger.info("Dispositivo eliminado", extra={"device_id": device_id})
+    logger.info("Dispositivo eliminado", extra={"device_id": device_id, "force": force})
 
 
 @router.get("/{device_id}/points", response_model=list[PointValue])

@@ -85,7 +85,7 @@ export function DevicesTab() {
     }
     if (!confirm(`¿Eliminar dispositivo "${name}" y todos sus puntos?`)) return
     try {
-      await api.delete(`/devices/${id}`)
+      await api.delete(`/devices/${id}?force=true`)
       load()
     } catch (e: unknown) {
       setError((e as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? 'Error al eliminar')

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { AreasTab } from './AreasTab'
 import { DevicesTab } from './DevicesTab'
 import { PointsTab } from './PointsTab'
@@ -13,8 +14,26 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'users', label: 'Usuarios' },
 ]
 
+function tabFromPath(pathname: string): Tab {
+  if (pathname.includes('/devices')) return 'devices'
+  if (pathname.includes('/points')) return 'points'
+  if (pathname.includes('/users')) return 'users'
+  return 'areas'
+}
+
 export default function ConfigPage() {
-  const [tab, setTab] = useState<Tab>('areas')
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [tab, setTab] = useState<Tab>(() => tabFromPath(location.pathname))
+
+  useEffect(() => {
+    setTab(tabFromPath(location.pathname))
+  }, [location.pathname])
+
+  const handleTab = (t: Tab) => {
+    setTab(t)
+    navigate(`/config/${t === 'areas' ? '' : t}`, { replace: true })
+  }
 
   return (
     <div>
@@ -24,7 +43,7 @@ export default function ConfigPage() {
         {TABS.map(t => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => handleTab(t.id)}
             style={{
               background: 'transparent',
               border: 'none',
