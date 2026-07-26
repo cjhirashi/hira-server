@@ -42,6 +42,8 @@ tags:
     description: Simuladores de dispositivos para desarrollo sin hardware real
   - name: Alarms
     description: Definiciones de condiciones de alarma y eventos — ciclo de vida activo/reconocido/resuelto
+  - name: Historicals
+    description: Históricos de valores de puntos — consulta con agregación TimescaleDB y exportación CSV
 
 paths:
   /health:
@@ -1371,6 +1373,83 @@ paths:
         "404":
           description: Alarma no encontrada
 
+  /v1/points/{id}/history:
+    get:
+      operationId: get_point_history
+      summary: Histórico de valores de un punto
+      description: |
+        Retorna el historial de valores registrados en TimescaleDB para el punto indicado.
+        Soporta datos crudos (`interval=raw`) y agregación con `time_bucket` de TimescaleDB
+        (`1min`, `5min`, `1hour`, `1day`). Si `format=csv` retorna StreamingResponse con
+        Content-Type `text/csv` en lugar de JSON.
+      tags:
+        - Historicals
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del punto
+        - name: from_dt
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Inicio del rango (ISO8601 UTC). Default: hace 1 hora.
+        - name: to_dt
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Fin del rango (ISO8601 UTC). Default: ahora.
+        - name: interval
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [raw, 1min, 5min, 1hour, 1day]
+            default: raw
+          description: Nivel de agregación. `raw` devuelve todos los registros sin agrupar.
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+          description: Formato de respuesta.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+            default: 1000
+          description: Número máximo de registros a devolver.
+      responses:
+        "200":
+          description: Histórico del punto (JSON o CSV según `format`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PointHistoryResponse"
+            text/csv:
+              schema:
+                type: string
+                description: "Archivo CSV con columnas: timestamp,value,quality"
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso `historicals:read`
+        "404":
+          description: Punto no encontrado
+
 components:
   securitySchemes:
     BearerAuth:
@@ -1980,3 +2059,58 @@ components:
           type: string
           format: uuid
           description: Trace ID del request para correlación con logs
+
+    PointHistoryRecord:
+      type: object
+      required:
+        - timestamp
+        - value
+        - quality
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Marca de tiempo UTC del registro
+        value:
+          type: number
+          format: double
+          description: Valor registrado del punto
+        quality:
+          type: string
+          enum: [good, bad, uncertain]
+          description: Calidad del valor en el momento del registro
+
+    PointHistoryResponse:
+      type: object
+      required:
+        - point_id
+        - point_name
+        - from_dt
+        - to_dt
+        - interval
+        - records
+        - count
+      properties:
+        point_id:
+          type: integer
+        point_name:
+          type: string
+        unit:
+          type: string
+          nullable: true
+        from_dt:
+          type: string
+          format: date-time
+        to_dt:
+          type: string
+          format: date-time
+        interval:
+          type: string
+          enum: [raw, 1min, 5min, 1hour, 1day]
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/PointHistoryRecord"
+        count:
+          type: integer
+          description: Número total de registros en la respuesta
