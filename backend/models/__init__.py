@@ -6,7 +6,7 @@ from models.user_roles import UserRole
 from models.devices import Device
 from models.points import Point
 from models.alarm_definitions import AlarmDefinition
-from models.alarms import Alarm
+from models.alarms import AlarmEvent
 from models.point_history import PointHistory
 from models.logic_scripts import LogicScript
 from models.script_executions import ScriptExecution
@@ -23,7 +23,7 @@ __all__ = [
     "Device",
     "Point",
     "AlarmDefinition",
-    "Alarm",
+    "AlarmEvent",
     "PointHistory",
     "LogicScript",
     "ScriptExecution",
