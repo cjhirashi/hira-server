@@ -9,7 +9,13 @@ class Mimic(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(20), nullable=False, default="1.0")
     canvas_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    elements_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    connections_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
