@@ -6,6 +6,7 @@ import { DashboardPage } from './components/dashboard/DashboardPage'
 import { AlarmsPage } from './components/alarms/AlarmsPage'
 import HistoryPage from './components/historicals/HistoryPage'
 import ConfigPage from './components/config/ConfigPage'
+import LogicPage from './components/logic/LogicPage'
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -50,7 +51,7 @@ export default function App() {
           <Route path="history" element={<HistoryPage />} />
           <Route path="config" element={<ConfigPage />} />
           <Route path="config/:section" element={<ConfigPage />} />
-          <Route path="logic" element={<PlaceholderPage title="Lógica" />} />
+          <Route path="logic" element={<LogicPage />} />
           <Route path="ai" element={<PlaceholderPage title="IA del Integrador" />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
