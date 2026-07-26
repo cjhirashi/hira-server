@@ -7,6 +7,8 @@ Documentación técnica del proyecto Hira.
 | Archivo | Propósito |
 |---------|-----------|
 | `openapi.yaml` | Contrato de la API REST — se define antes de implementar cualquier router |
+| `websocket_events.md` | Contrato de eventos WebSocket (server→client y client→server) |
+| `mimic_schema.md` | Esquema JSON de mimics HVAC: canvas, elements (9 tipos), connections, bindings |
 
 ## Principio contract-first
 
