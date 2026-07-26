@@ -42,3 +42,37 @@ En validación T-33 el Operador pudo intentar la escritura (RBAC correcto, recib
 3. O usar BAC0 en modo `--ip` que no requiere privilegios adicionales
 
 **Resuelto:** Sprint 2. Migrado a `BAC0==2024.1.12` (bacpypes3, Python 3.12 compatible). API actualizada: `who_is()` y `read()` son `async def`; escritura via `_write()` async; desconexión via `await bacnet._disconnect()`. Todas las operaciones BAC0 corren en `asyncio.to_thread() + asyncio.run()` para aislar del loop starlette/anyio. T-33.1, T-33.2, T-33.4, T-33.5 pasados. Commit: `c3b76b6`.
+
+---
+
+## DEV-003 — T-77.3 pide `alarm_condition` en POST /points (no implementado)
+
+**Tarea afectada:** T-77.3 (validación Sprint 7)  
+**Tipo:** Alcance  
+**Descripción:** El criterio T-77.3 pide `POST /api/v1/points` con campo `alarm_condition` inline. En la implementación de Sprint 7, `POST /points` crea el punto y `POST /alarm-definitions` crea la definición de alarma — son dos endpoints independientes, coherentes con el diseño de Sprint 5. El campo `alarm_condition` no existe en `PointCreate` ni en `openapi.yaml`.
+
+**Alternativa propuesta:** Se puede validar T-77.3 creando primero el punto y luego la alarm-definition en un segundo request. La creación inline de alarma en el mismo endpoint requeriría cambio de diseño en openapi.yaml.
+
+**Pendiente:** Decisión de Cowork — ¿agregar `alarm_definition_inline` opcional a `POST /points` en Sprint 8, o validar T-77.3 con dos requests separados?
+
+---
+
+## DEV-004 — T-77.2 espera 409 en DELETE device con puntos; implementado con `?force=true`
+
+**Tarea afectada:** T-77.2 (validación Sprint 7)  
+**Tipo:** Alcance  
+**Descripción:** El criterio dice "DELETE con puntos activos → 409". Se implementó así: sin `?force=true` retorna 409 con mensaje explicativo; con `?force=true` elimina en cascade. La UI del Configurador usa `?force=true` para el flujo normal de eliminación (con confirmación de usuario).
+
+**Resuelto:** Implementado directamente — behavior matches T-77.2 criterion (409 sin force). La UI añade `?force=true` tras confirmación explícita del usuario.
+
+---
+
+## DEV-005 — T-93.4/T-93.5/T-93.6 no validables sin API key real de Anthropic/OpenAI
+
+**Tarea afectada:** T-93.4, T-93.5, T-93.6 (validación Sprint 9)
+**Tipo:** Alcance
+**Descripción:** Los criterios T-93.4 ("¿Cuántos puntos hay?"), T-93.5 (tool call `get_point_value`) y T-93.6 (borrador de script generado por LLM) requieren invocar un LLM externo (Anthropic o OpenAI) con una API key válida. En el entorno de desarrollo de Claude Code no hay `ANTHROPIC_API_KEY` disponible. La infraestructura del agente fue validada directamente (tools ejecutan consultas SQL correctas, context injection funciona, `build_agent`/`invoke_agent` no levantan errores de importación). Solo falta el LLM real.
+
+**Alternativa propuesta:** Cowork puede validar estos tres criterios con su propia API key ingresando en Configuración > IA, guardando la key y enviando las preguntas desde `/ai`.
+
+**Pendiente:** Validación manual por Cowork con API key real.
