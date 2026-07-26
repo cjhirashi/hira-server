@@ -3,11 +3,10 @@ Worker Celery para ejecución de scripts de lógica Python en sandbox Restricted
 
 Cada script corre en un bucle con `interval_seconds` de pausa entre ciclos.
 La instancia `hira` se inyecta en el contexto de ejecución.
+Todo el worker es síncrono para evitar conflictos con el event loop del proceso Celery.
 """
-import asyncio
 import time
 from datetime import datetime, timezone
-from io import StringIO
 
 from celery import Task
 from RestrictedPython import compile_restricted, safe_globals
@@ -15,6 +14,7 @@ from RestrictedPython.PrintCollector import PrintCollector
 
 from core.logger import get_logger
 from workers.celery_app import celery_app
+import models  # noqa: F401 — ensures all ORM models are registered before any query
 
 logger = get_logger(__name__)
 
@@ -33,7 +33,6 @@ def _build_sandbox_globals(hira_instance: object) -> dict:
     globs["_getiter_"] = iter
     globs["_getattr_"] = getattr
     globs["hira"] = hira_instance
-    # Bloquear nombres peligrosos
     for name in _BLOCKED_NAMES:
         globs.pop(name, None)
     return globs
@@ -50,11 +49,10 @@ def _validate_syntax(code: str) -> str | None:
         return str(exc)
 
 
-async def _run_cycle(script_id: int, code: str, hira_instance: object) -> dict:
-    """Ejecuta un ciclo del script y retorna {status, output, error_message}."""
-    from adapters.factory import get_db_adapter
-    from models.script_executions import ScriptExecution
-    from sqlalchemy.sql import text as sa_text
+def _run_cycle(script_id: int, code: str, hira_instance: object) -> dict:
+    """Ejecuta un ciclo del script y persiste en BD. Retorna {status, output, error_message}."""
+    from sqlalchemy import create_engine, text as sa_text
+    from core.config import settings
 
     started_at = datetime.now(timezone.utc)
 
@@ -68,7 +66,6 @@ async def _run_cycle(script_id: int, code: str, hira_instance: object) -> dict:
 
     try:
         exec(byte_code, globs)  # noqa: S102 — intentional sandbox exec
-        # Collect print output if PrintCollector was used
         printed = globs.get("_print", None)
         if printed and hasattr(printed, "_get_prints"):
             extra = "\n".join(printed._get_prints())
@@ -88,18 +85,26 @@ async def _run_cycle(script_id: int, code: str, hira_instance: object) -> dict:
 
     ended_at = datetime.now(timezone.utc)
 
-    # Persistir ejecución en BD
-    adapter = get_db_adapter()
-    async with adapter.get_session() as session:
-        execution = ScriptExecution(
-            script_id=script_id,
-            started_at=started_at,
-            ended_at=ended_at,
-            status=status,
-            output=output or None,
-            error_message=error_message,
+    # Persistir ejecución en BD (síncrono)
+    sync_url = settings.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    engine = create_engine(sync_url, pool_pre_ping=True)
+    with engine.connect() as conn:
+        conn.execute(
+            sa_text(
+                "INSERT INTO script_executions (script_id, started_at, ended_at, status, output, error_message) "
+                "VALUES (:script_id, :started_at, :ended_at, :status, :output, :error_message)"
+            ),
+            {
+                "script_id": script_id,
+                "started_at": started_at,
+                "ended_at": ended_at,
+                "status": status,
+                "output": output or None,
+                "error_message": error_message,
+            },
         )
-        session.add(execution)
+        conn.commit()
+    engine.dispose()
 
     return {"status": status, "output": output, "error_message": error_message}
 
@@ -109,51 +114,31 @@ def run_logic_script(self: Task, script_id: int) -> None:
     """
     Tarea Celery: ejecuta un script de lógica en bucle hasta ser revocada.
     """
-    from adapters.factory import get_db_adapter
     from core.hira_api import HiraAPI
-    from core.redis import get_redis
-    from models.logic_scripts import LogicScript
-    from sqlalchemy.sql import text as sa_text
+    from sqlalchemy import create_engine, text as sa_text
+    from core.config import settings
 
     logger.info("Logic script iniciado", extra={"script_id": script_id, "task_id": self.request.id})
 
-    async def _main() -> None:
-        adapter = get_db_adapter()
-        redis = await get_redis()
-        hira = HiraAPI(adapter.get_session, redis)
+    sync_url = settings.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    engine = create_engine(sync_url, pool_pre_ping=True)
 
-        async with adapter.get_session() as session:
-            script = await session.get(LogicScript, script_id)
-            if script is None:
-                logger.error("Script no encontrado", extra={"script_id": script_id})
-                return
-            code = script.code
-            interval = script.interval_seconds
+    with engine.connect() as conn:
+        row = conn.execute(
+            sa_text("SELECT code, interval_seconds FROM logic_scripts WHERE id = :id"),
+            {"id": script_id},
+        ).fetchone()
 
-        while True:
-            # Verificar si la tarea fue revocada
-            if self.is_aborted():
-                logger.info("Script revocado", extra={"script_id": script_id})
-                break
+    engine.dispose()
 
-            await _run_cycle(script_id, code, hira)
+    if row is None:
+        logger.error("Script no encontrado", extra={"script_id": script_id})
+        return
 
-            # Recargar intervalo por si fue editado (requiere restart para aplicar)
-            await asyncio.sleep(interval)
+    code = row[0]
+    interval = row[1]
+    hira = HiraAPI()
 
-    asyncio.run(_main())
-
-    # Marcar como stopped al salir limpiamente
-    async def _mark_stopped() -> None:
-        from adapters.factory import get_db_adapter
-        from models.logic_scripts import LogicScript
-
-        adapter = get_db_adapter()
-        async with adapter.get_session() as session:
-            script = await session.get(LogicScript, script_id)
-            if script and script.status == "running":
-                script.status = "stopped"
-                script.celery_task_id = None
-        logger.info("Script detenido", extra={"script_id": script_id})
-
-    asyncio.run(_mark_stopped())
+    while True:
+        _run_cycle(script_id, code, hira)
+        time.sleep(interval)
