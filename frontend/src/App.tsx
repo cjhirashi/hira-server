@@ -7,17 +7,7 @@ import { AlarmsPage } from './components/alarms/AlarmsPage'
 import HistoryPage from './components/historicals/HistoryPage'
 import ConfigPage from './components/config/ConfigPage'
 import LogicPage from './components/logic/LogicPage'
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div>
-      <h2>{title}</h2>
-      <p style={{ color: 'var(--md-sys-color-on-surface-variant, #888)' }}>
-        Sprint en construcción
-      </p>
-    </div>
-  )
-}
+import { AIChatPage } from './components/ai/AIChatPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('hira-token')
@@ -52,7 +42,7 @@ export default function App() {
           <Route path="config" element={<ConfigPage />} />
           <Route path="config/:section" element={<ConfigPage />} />
           <Route path="logic" element={<LogicPage />} />
-          <Route path="ai" element={<PlaceholderPage title="IA del Integrador" />} />
+          <Route path="ai" element={<AIChatPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
