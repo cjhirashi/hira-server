@@ -62,6 +62,8 @@ async def write_point(
         point = await session.get(Point, point_id)
         if point is None:
             raise HTTPException(status_code=404, detail="Punto no encontrado")
+        if not point.writable:
+            raise HTTPException(status_code=422, detail="El punto no es escribible")
 
         device = await session.get(Device, point.device_id)
         if device is None:
