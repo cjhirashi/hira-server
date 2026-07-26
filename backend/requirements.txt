@@ -19,3 +19,9 @@ email-validator==2.2.0
 BAC0==2024.9.20
 pymodbus==3.7.4
 RestrictedPython==7.3
+
+# AI Agent
+langchain>=0.3
+langchain-anthropic>=0.3
+langchain-openai>=0.2
+cryptography>=42.0
