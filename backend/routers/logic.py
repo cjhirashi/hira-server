@@ -71,7 +71,7 @@ async def create_script(
         async with adapter.get_session() as session:
             script = LogicScript(
                 name=body.name,
-                description=body.description,
+                description=body.description or "",
                 code=body.code,
                 interval_seconds=body.interval_seconds,
                 status="stopped",
@@ -82,8 +82,10 @@ async def create_script(
 
         async with adapter.get_session() as session:
             script = await session.get(LogicScript, script_id)
-    except IntegrityError:
-        raise HTTPException(status_code=400, detail=f"Ya existe un script con el nombre '{body.name}'")
+    except IntegrityError as exc:
+        if "unique" in str(exc).lower() or "duplicate" in str(exc).lower():
+            raise HTTPException(status_code=400, detail=f"Ya existe un script con el nombre '{body.name}'")
+        raise HTTPException(status_code=400, detail=f"Error de base de datos: {exc}")
 
     logger.info("Script creado", extra={"script_id": script_id})
     return _to_response(script)
