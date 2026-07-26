@@ -121,6 +121,46 @@ services:
       - hira-network
     restart: unless-stopped
 
+  celery-alarm:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: hira-backend
+    container_name: hira-celery-alarm
+    command: celery -A workers.celery_app worker -Q normal --loglevel=info
+    env_file: .env
+    environment:
+      - HIRA_DEPLOY_MODE=${HIRA_DEPLOY_MODE:-server}
+      - PYTHONPATH=/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - hira-network
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: hira-backend
+    container_name: hira-celery-beat
+    command: celery -A workers.celery_app beat --loglevel=info
+    env_file: .env
+    environment:
+      - HIRA_DEPLOY_MODE=${HIRA_DEPLOY_MODE:-server}
+      - PYTHONPATH=/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - hira-network
+    restart: unless-stopped
+
   nginx:
     image: nginx:1.27-alpine
     container_name: hira-nginx
