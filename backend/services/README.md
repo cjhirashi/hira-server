@@ -29,6 +29,7 @@ class DeviceService:
 | Archivo | Propósito |
 |---|---|
 | `alarm_engine.py` | Motor de evaluación de condiciones de alarma |
+| `history_writer.py` | Escritura de históricos en TimescaleDB con control de intervalo mínimo |
 
 ## alarm_engine.py
 
@@ -42,3 +43,16 @@ class DeviceService:
 **Caché:** Las definiciones habilitadas por `point_id` se cachean en memoria (TTL 60s) para no consultar la BD en cada ciclo de evaluación (cada 10s). Se invalida llamando `alarm_engine.invalidate_cache(point_id)` al crear/modificar una definición.
 
 **Condiciones soportadas:** `gt` (>), `lt` (<), `eq` (==), `between` (threshold ≤ value ≤ threshold_high)
+
+## history_writer.py
+
+`HistoryWriter` inserta registros en `point_history` (TimescaleDB) respetando el intervalo mínimo configurado por punto.
+
+**Lógica de intervalo mínimo:**
+1. Al recibir un valor, consulta `point:{id}:last_recorded` en Redis.
+2. Si el tiempo transcurrido desde la última escritura es menor que `history_interval_seconds` → no-op silencioso.
+3. Si el tiempo ha pasado (o nunca se registró) → inserta en `point_history` y actualiza `point:{id}:last_recorded`.
+
+**Integración:** Se llama desde `bacnet_poller._poll_device()` después de publicar en Redis, con la sesión y el cliente Redis del worker. Los errores de inserción se loguean y no interrumpen el pipeline de polling.
+
+**TTL Redis:** La clave `last_recorded` tiene TTL de 3600s para limpiar puntos que dejan de ser monitoreados.
