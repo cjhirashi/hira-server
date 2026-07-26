@@ -12,6 +12,7 @@ Módulos transversales del backend. Todos los demás módulos importan de aquí 
 | `redis.py` | Cliente Redis async singleton (`get_redis`). Funciones auxiliares `get_rbac_key` y `get_refresh_key` para claves con namespace |
 | `security.py` | bcrypt (`hash_password`, `verify_password`), JWT HS256 (`create_access_token`, `create_refresh_token`, `decode_token`) y dependencia FastAPI `get_current_user` |
 | `rbac.py` | Carga y caché de permisos RBAC en Redis. Dependencia `require_permission("module:level")` para proteger endpoints |
+| `hira_api.py` | API interna inyectada en scripts de lógica. Clase `HiraAPI` con `read()`, `write()`, `subscribe()`, `log()`. Se instancia por ciclo de ejecución del worker |
 | `ports/` | Interfaces abstractas (Protocols de Python) que definen los contratos que deben cumplir los adaptadores |
 
 ## Cómo funciona
@@ -32,3 +33,24 @@ logger.error("Error inesperado", exc_info=exc)
 ```
 
 Para activar DEBUG: `LOG_LEVEL=DEBUG` en `.env` o en `docker-compose.dev.yml`.
+
+## hira_api.py — API interna para scripts de lógica
+
+```python
+from core.hira_api import HiraAPI
+
+hira = HiraAPI(session_factory, redis_client)
+
+valor = hira.read("nombre_punto")   # → float | None — lee de Redis
+hira.write("nombre_punto", 22.5)    # → bool — escribe en Redis + publica en WebSocket
+hira.log("Mensaje de debug")        # → None — captura en output del ciclo
+```
+
+**Restricciones del sandbox (RestrictedPython):**
+- No se puede importar módulos externos (`import os`, `import subprocess`, etc.)
+- No se puede usar `open`, `exec`, `eval` directamente
+- Solo se expone la instancia `hira` y las funciones seguras de `safe_globals`
+
+**Cómo agregar nuevos métodos:**
+1. Agregar el método a `HiraAPI` en `hira_api.py`
+2. No requiere cambiar el worker — `hira` se inyecta completo en el contexto de ejecución

@@ -1922,6 +1922,195 @@ paths:
         "404":
           description: Alarma no encontrada
 
+  /logic/scripts:
+    get:
+      operationId: list_logic_scripts
+      summary: Listar scripts de lógica
+      tags:
+        - Logic
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de scripts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LogicScriptResponse"
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso logic:read
+
+    post:
+      operationId: create_logic_script
+      summary: Crear script de lógica
+      description: |
+        Crea un nuevo script Python. Valida sintaxis antes de guardar —
+        retorna 422 si el código contiene errores de sintaxis.
+      tags:
+        - Logic
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogicScriptCreate"
+      responses:
+        "201":
+          description: Script creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogicScriptResponse"
+        "422":
+          description: Error de sintaxis en el código Python
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso logic:write
+
+  /logic/scripts/{script_id}:
+    get:
+      operationId: get_logic_script
+      summary: Detalle de script
+      tags:
+        - Logic
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ScriptId"
+      responses:
+        "200":
+          description: Detalle del script
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogicScriptResponse"
+        "404":
+          description: Script no encontrado
+
+    put:
+      operationId: update_logic_script
+      summary: Editar script (solo si está detenido)
+      tags:
+        - Logic
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ScriptId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogicScriptUpdate"
+      responses:
+        "200":
+          description: Script actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogicScriptResponse"
+        "409":
+          description: El script está en ejecución — detenerlo antes de editar
+        "422":
+          description: Error de sintaxis en el código Python
+
+    delete:
+      operationId: delete_logic_script
+      summary: Eliminar script (solo si está detenido)
+      tags:
+        - Logic
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ScriptId"
+      responses:
+        "204":
+          description: Script eliminado
+        "409":
+          description: El script está en ejecución — detenerlo antes de eliminar
+        "404":
+          description: Script no encontrado
+
+  /logic/scripts/{script_id}/start:
+    post:
+      operationId: start_logic_script
+      summary: Iniciar ejecución del script
+      tags:
+        - Logic
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ScriptId"
+      responses:
+        "200":
+          description: Script iniciado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogicScriptResponse"
+        "409":
+          description: El script ya está en ejecución
+        "404":
+          description: Script no encontrado
+
+  /logic/scripts/{script_id}/stop:
+    post:
+      operationId: stop_logic_script
+      summary: Detener ejecución del script
+      tags:
+        - Logic
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ScriptId"
+      responses:
+        "200":
+          description: Script detenido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogicScriptResponse"
+        "404":
+          description: Script no encontrado
+
+  /logic/scripts/{script_id}/logs:
+    get:
+      operationId: get_logic_script_logs
+      summary: Últimas N ejecuciones del script
+      tags:
+        - Logic
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ScriptId"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 500
+          description: Número máximo de entradas a retornar
+      responses:
+        "200":
+          description: Entradas de log
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScriptExecutionResponse"
+        "404":
+          description: Script no encontrado
+
   /v1/points/{id}/history:
     get:
       operationId: get_point_history
@@ -2064,6 +2253,15 @@ components:
         type: integer
         minimum: 1
       description: ID numérico del área
+
+    ScriptId:
+      name: script_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: ID numérico del script de lógica
 
   schemas:
     # ── Monitor ──────────────────────────────────────────────────────────────
@@ -2838,3 +3036,112 @@ components:
         count:
           type: integer
           description: Número total de registros en la respuesta
+
+    LogicScriptCreate:
+      type: object
+      required:
+        - name
+        - code
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: "Control temperatura AHU"
+        description:
+          type: string
+          nullable: true
+          example: "Ajusta setpoint según temperatura exterior"
+        code:
+          type: string
+          example: "valor = hira.read('temp_supply')\nhira.log(f'Temperatura: {valor}')"
+        interval_seconds:
+          type: integer
+          minimum: 1
+          default: 10
+          example: 10
+
+    LogicScriptUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        code:
+          type: string
+          nullable: true
+        interval_seconds:
+          type: integer
+          minimum: 1
+          nullable: true
+
+    LogicScriptResponse:
+      type: object
+      required:
+        - id
+        - name
+        - code
+        - interval_seconds
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Control temperatura AHU"
+        description:
+          type: string
+          nullable: true
+        code:
+          type: string
+        interval_seconds:
+          type: integer
+          example: 10
+        status:
+          type: string
+          enum: [stopped, running, error]
+          example: "stopped"
+        celery_task_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ScriptExecutionResponse:
+      type: object
+      required:
+        - id
+        - script_id
+        - started_at
+        - status
+      properties:
+        id:
+          type: integer
+        script_id:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [success, error]
+        output:
+          type: string
+          nullable: true
+        error_message:
+          type: string
+          nullable: true

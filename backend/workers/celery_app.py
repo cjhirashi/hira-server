@@ -11,6 +11,7 @@ celery_app = Celery(
         "workers.mqtt_listener",
         "workers.simulator_runner",
         "workers.alarm_worker",
+        "workers.logic_worker",
     ],
 )
 
@@ -26,6 +27,7 @@ celery_app.conf.update(
         "workers.mqtt_listener.*": {"queue": "protocols"},
         "workers.simulator_runner.*": {"queue": "simulators"},
         "workers.alarm_worker.*": {"queue": "normal"},
+        "workers.logic_worker.*": {"queue": "normal"},
     },
     beat_schedule={
         "evaluate-alarms-every-10s": {

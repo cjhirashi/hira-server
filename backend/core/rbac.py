@@ -39,7 +39,7 @@ _ROLE_PERMISSIONS: dict[str, list[str]] = {
         "points:read", "points:write",
         "devices:read", "devices:write",
         "alarms:read", "alarms:write",
-        "logic:read",
+        "logic:read", "logic:write",
         "historicals:read",
         "config:read", "config:write",
     ],

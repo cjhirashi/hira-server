@@ -24,6 +24,7 @@ Redis (`REDIS_URL` en `.env`). Celery usa Redis como broker y backend de resulta
 | `mqtt_listener.py` | Tarea persistente (`max_retries=None`): mantiene la suscripción MQTT activa |
 | `simulator_runner.py` | Wrappers síncronos que lanzan los simuladores vía `asyncio.run()` |
 | `alarm_worker.py` | Tarea `evaluate_alarms` disparada por Celery Beat cada 10s — evalúa condiciones contra valores en Redis |
+| `logic_worker.py` | Tarea `run_logic_script(script_id)` — ejecuta script Python en sandbox RestrictedPython en bucle infinito hasta ser revocada |
 
 ## Cómo funciona
 
@@ -32,6 +33,20 @@ Redis (`REDIS_URL` en `.env`). Celery usa Redis como broker y backend de resulta
 3. `mqtt_listener.start_listener()` conecta `MQTTAdapter` y corre loop infinito.
 4. `simulator_runner` lanza el simulador correspondiente y Celery gestiona su ciclo de vida.
 5. `alarm_worker.evaluate_alarms()` — disparado por Celery Beat cada 10s: lee `distinct(point_id)` con definiciones habilitadas, obtiene el valor actual de Redis, llama `alarm_engine.evaluate()`. Corre en contenedor `celery-alarm` (cola `normal`).
+
+## logic_worker.py — ciclo de ejecución
+
+1. `POST /logic/scripts/{id}/start` → router llama `run_logic_script.apply_async(args=[id], queue="normal")`
+2. El worker carga el script desde PostgreSQL y crea una instancia `HiraAPI`
+3. En cada ciclo: `compile_restricted(code)` → `exec(byte_code, sandbox_globals)` → guarda `ScriptExecution` en BD
+4. Si el script levanta excepción → guarda en `error_message`, **continúa el ciclo** (no mata el worker)
+5. `POST /logic/scripts/{id}/stop` → `celery_app.control.revoke(task_id, terminate=True)` → worker detecta `self.is_aborted()` → sale limpiamente → marca status='stopped'
+
+**Sandbox RestrictedPython:**
+- `compile_restricted()` — rechaza construcciones peligrosas en compilación
+- `safe_globals` — entorno con builtins restringidos
+- `_print_` = `PrintCollector` — captura `print()` sin acceso a stdout real
+- `hira` — instancia `HiraAPI` inyectada; único punto de acceso al sistema
 
 ## Celery Beat
 El schedule de 10s para `evaluate_alarms` está configurado en `celery_app.beat_schedule`. Corre en contenedor separado `hira-celery-beat` (solo una instancia activa — no escalar).
