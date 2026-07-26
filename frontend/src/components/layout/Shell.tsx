@@ -1,8 +1,9 @@
 import { Outlet, NavLink } from 'react-router-dom'
+import { useAlarmsStore } from '../../store/alarmsStore'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard' },
-  { to: '/alarms', label: 'Alarmas' },
+  { to: '/alarms', label: 'Alarmas', badge: true },
   { to: '/history', label: 'Históricos' },
   { to: '/config', label: 'Configuración' },
   { to: '/logic', label: 'Lógica' },
@@ -10,6 +11,8 @@ const NAV_ITEMS = [
 ]
 
 export default function Shell() {
+  const unacknowledged = useAlarmsStore((s) => s.unacknowledgedCount())
+
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif' }}>
       <nav
@@ -26,12 +29,14 @@ export default function Shell() {
         <div style={{ padding: '0 1rem 1rem', fontWeight: 700, fontSize: '1.2rem' }}>
           Hira
         </div>
-        {NAV_ITEMS.map(({ to, label }) => (
+        {NAV_ITEMS.map(({ to, label, badge }) => (
           <NavLink
             key={to}
             to={to}
             style={({ isActive }) => ({
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               padding: '0.6rem 1rem',
               textDecoration: 'none',
               color: isActive
@@ -42,7 +47,21 @@ export default function Shell() {
               margin: '0 8px',
             })}
           >
-            {label}
+            <span>{label}</span>
+            {badge && unacknowledged > 0 && (
+              <span style={{
+                background: 'var(--hira-alarm-critical)',
+                color: '#fff',
+                borderRadius: 10,
+                padding: '1px 6px',
+                fontSize: 11,
+                fontWeight: 700,
+                minWidth: 18,
+                textAlign: 'center',
+              }}>
+                {unacknowledged}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

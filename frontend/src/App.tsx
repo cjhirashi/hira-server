@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Shell from './components/layout/Shell'
 import LoginPage from './components/auth/LoginPage'
 import { DashboardPage } from './components/dashboard/DashboardPage'
+import { AlarmsPage } from './components/alarms/AlarmsPage'
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -43,7 +44,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="alarms" element={<PlaceholderPage title="Alarmas" />} />
+          <Route path="alarms" element={<AlarmsPage />} />
           <Route path="history" element={<PlaceholderPage title="Históricos" />} />
           <Route path="config" element={<PlaceholderPage title="Configuración" />} />
           <Route path="logic" element={<PlaceholderPage title="Lógica" />} />
