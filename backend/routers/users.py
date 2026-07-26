@@ -166,6 +166,29 @@ async def update_user(
         return await _fetch_user_response(session, user_id)
 
 
+@router.patch("/{user_id}/disable", response_model=UserResponse)
+async def disable_user(
+    user_id: int,
+    current_user: dict[str, Any] = Depends(require_permission("config:write")),
+) -> Any:
+    requesting_user_id = int(current_user["sub"])
+    if requesting_user_id == user_id:
+        raise HTTPException(status_code=400, detail="No puedes desactivarte a ti mismo")
+
+    adapter = get_db_adapter()
+    async with adapter.get_session() as session:
+        user = await session.get(User, user_id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        user.is_active = False
+
+    await invalidate_user_permissions(user_id)
+    logger.info("Usuario desactivado (disable endpoint)", extra={"user_id": user_id})
+
+    async with adapter.get_session() as session:
+        return await _fetch_user_response(session, user_id)
+
+
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
