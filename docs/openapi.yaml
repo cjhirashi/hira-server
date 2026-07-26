@@ -40,6 +40,8 @@ tags:
     description: Puntos de datos — lectura y escritura de valores
   - name: Simulators
     description: Simuladores de dispositivos para desarrollo sin hardware real
+  - name: Alarms
+    description: Definiciones de condiciones de alarma y eventos — ciclo de vida activo/reconocido/resuelto
 
 paths:
   /health:
@@ -1199,6 +1201,176 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /v1/alarm-definitions:
+    get:
+      operationId: list_alarm_definitions
+      summary: Lista definiciones de alarma
+      tags: [Alarms]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de definiciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlarmDefinitionResponse"
+    post:
+      operationId: create_alarm_definition
+      summary: Crea definición de alarma
+      tags: [Alarms]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlarmDefinitionCreate"
+      responses:
+        "201":
+          description: Definición creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlarmDefinitionResponse"
+
+  /v1/alarm-definitions/{id}:
+    put:
+      operationId: update_alarm_definition
+      summary: Actualiza definición de alarma
+      tags: [Alarms]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlarmDefinitionCreate"
+      responses:
+        "200":
+          description: Definición actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlarmDefinitionResponse"
+    delete:
+      operationId: delete_alarm_definition
+      summary: Elimina definición de alarma
+      tags: [Alarms]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Eliminada
+
+  /v1/alarms:
+    get:
+      operationId: list_active_alarms
+      summary: Lista alarmas activas
+      tags: [Alarms]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Alarmas con status=active
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlarmEventResponse"
+
+  /v1/alarms/history:
+    get:
+      operationId: get_alarm_history
+      summary: Historial de alarmas con filtros
+      tags: [Alarms]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: point_id
+          in: query
+          schema:
+            type: integer
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, acknowledged, resolved]
+        - name: from_dt
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to_dt
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Historial filtrado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlarmEventResponse"
+
+  /v1/alarms/{id}/acknowledge:
+    post:
+      operationId: acknowledge_alarm
+      summary: Reconoce una alarma activa
+      tags: [Alarms]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Alarma reconocida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlarmEventResponse"
+        "404":
+          description: Alarma no encontrada
+
 components:
   securitySchemes:
     BearerAuth:
@@ -1685,6 +1857,113 @@ components:
           type: string
           nullable: true
           description: ID de la tarea Celery activa (null si detenido)
+
+    # ── Alarms ────────────────────────────────────────────────────────────────
+
+    AlarmDefinitionCreate:
+      type: object
+      required:
+        - point_id
+        - name
+        - condition
+        - threshold
+        - priority
+        - message
+      properties:
+        point_id:
+          type: integer
+          example: 3
+        name:
+          type: string
+          example: "Temperatura alta"
+        condition:
+          type: string
+          enum: [gt, lt, eq, between]
+          example: gt
+        threshold:
+          type: number
+          format: float
+          example: 28.0
+        threshold_high:
+          type: number
+          format: float
+          nullable: true
+          description: Solo para condición "between"
+          example: null
+        priority:
+          type: string
+          enum: [critical, high, medium, low]
+          example: high
+        message:
+          type: string
+          example: "Temperatura de retorno supera 28°C"
+        enabled:
+          type: boolean
+          default: true
+
+    AlarmDefinitionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        point_id:
+          type: integer
+        name:
+          type: string
+        condition:
+          type: string
+          enum: [gt, lt, eq, between]
+        threshold:
+          type: number
+        threshold_high:
+          type: number
+          nullable: true
+        priority:
+          type: string
+          enum: [critical, high, medium, low]
+        message:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    AlarmEventResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        alarm_definition_id:
+          type: integer
+        point_id:
+          type: integer
+        point_name:
+          type: string
+        triggered_value:
+          type: number
+        priority:
+          type: string
+          enum: [critical, high, medium, low]
+        message:
+          type: string
+        status:
+          type: string
+          enum: [active, acknowledged, resolved]
+        triggered_at:
+          type: string
+          format: date-time
+        acknowledged_at:
+          type: string
+          format: date-time
+          nullable: true
+        acknowledged_by:
+          type: string
+          nullable: true
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
 
     # ── Shared ────────────────────────────────────────────────────────────────
 
