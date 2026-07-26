@@ -1,5 +1,6 @@
 # Archivos de coordinación Cowork-Claude Code
 CLAUDE.md
+DEVIATIONS.md
 
 # Variables de entorno con secrets
 .env
