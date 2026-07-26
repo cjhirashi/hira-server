@@ -16,6 +16,8 @@ from routers.monitor import router as monitor_router
 from routers.points import router as points_router
 from routers.simulators import router as simulators_router
 from routers.users import router as users_router
+from routers.alarm_definitions import router as alarm_definitions_router
+from routers.alarms import router as alarms_router
 from routers.mimics import router as mimics_router
 from routers.ws import router as ws_router
 from websocket.redis_subscriber import start_subscriber, stop_subscriber
@@ -133,6 +135,42 @@ async def _seed_demo_mimic() -> None:
     logger.info("Mimic Demo HVAC creado")
 
 
+async def _seed_alarm_definitions() -> None:
+    """Crea 2 definiciones de alarma de ejemplo si no existe ninguna."""
+    from adapters.factory import get_db_adapter
+    from models.alarm_definitions import AlarmDefinition
+    from sqlalchemy import select, func as sqlfunc
+
+    adapter = get_db_adapter()
+    async with adapter.get_session() as session:
+        count = await session.scalar(select(sqlfunc.count()).select_from(AlarmDefinition))
+        if count and count > 0:
+            return
+
+        # Punto 3 = temp_supply del simulador BACnet Demo HVAC
+        session.add(AlarmDefinition(
+            point_id=3,
+            name="Temperatura alta",
+            condition="gt",
+            threshold=28.0,
+            threshold_high=None,
+            priority="high",
+            message="Temperatura de retorno supera 28°C",
+            enabled=True,
+        ))
+        session.add(AlarmDefinition(
+            point_id=3,
+            name="Temperatura crítica",
+            condition="gt",
+            threshold=35.0,
+            threshold_high=None,
+            priority="critical",
+            message="Temperatura de retorno supera 35°C — revisar equipo",
+            enabled=True,
+        ))
+    logger.info("Alarm definitions seed creadas")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info(
@@ -145,6 +183,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     await _seed_admin()
     await _seed_demo_mimic()
+    await _seed_alarm_definitions()
     start_subscriber()
     yield
     stop_subscriber()
@@ -178,5 +217,7 @@ app.include_router(users_router, prefix="/api/v1")
 app.include_router(devices_router, prefix="/api/v1")
 app.include_router(points_router, prefix="/api/v1")
 app.include_router(simulators_router, prefix="/api/v1")
+app.include_router(alarm_definitions_router, prefix="/api/v1")
+app.include_router(alarms_router, prefix="/api/v1")
 app.include_router(mimics_router, prefix="/api/v1")
 app.include_router(ws_router)
