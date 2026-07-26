@@ -69,7 +69,7 @@ async def create_mimic(
     async with adapter.get_session() as session:
         mimic = await session.get(Mimic, mimic_id)
 
-    logger.info("Mimic creado", extra={"mimic_id": mimic_id, "name": body.name})
+    logger.info("Mimic creado", extra={"mimic_id": mimic_id, "mimic_name": body.name})
     return _to_response(mimic)
 
 
