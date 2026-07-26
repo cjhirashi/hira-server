@@ -3,6 +3,7 @@ from models.users import User
 from models.roles import Role
 from models.permissions import Permission
 from models.user_roles import UserRole
+from models.areas import Area
 from models.devices import Device
 from models.points import Point
 from models.alarm_definitions import AlarmDefinition
@@ -20,6 +21,7 @@ __all__ = [
     "Role",
     "Permission",
     "UserRole",
+    "Area",
     "Device",
     "Point",
     "AlarmDefinition",
