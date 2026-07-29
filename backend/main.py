@@ -25,6 +25,7 @@ from routers.logic import router as logic_router
 from routers.ai import router as ai_router
 from routers.system import router as system_router
 from routers.notifications import router as notifications_router
+from routers.tests import router as tests_router
 from routers.mimics import router as mimics_router
 from routers.ws import router as ws_router
 from websocket.redis_subscriber import start_subscriber, stop_subscriber
@@ -232,6 +233,7 @@ app.include_router(logic_router, prefix="/api/v1")
 app.include_router(ai_router, prefix="/api/v1")
 app.include_router(system_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
+app.include_router(tests_router, prefix="/api/v1")
 app.include_router(mimics_router, prefix="/api/v1")
 app.include_router(ws_router)
 
