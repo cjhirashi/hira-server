@@ -36,6 +36,7 @@ _ROLE_PERMISSIONS: dict[str, list[str]] = {
         "ai:read", "ai:write",
         "system:read",
         "notifications:read", "notifications:write",
+        "tests:read", "tests:write",
     ],
     "Operador": [
         "users:read",

@@ -13,6 +13,7 @@ celery_app = Celery(
         "workers.alarm_worker",
         "workers.logic_worker",
         "workers.monitor_worker",
+        "workers.test_worker",
     ],
 )
 
@@ -29,6 +30,7 @@ celery_app.conf.update(
         "workers.simulator_runner.*": {"queue": "simulators"},
         "workers.alarm_worker.*": {"queue": "normal"},
         "workers.logic_worker.*": {"queue": "normal"},
+        "workers.test_worker.*": {"queue": "high"},
     },
     beat_schedule={
         "evaluate-alarms-every-10s": {

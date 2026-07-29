@@ -91,10 +91,20 @@ class HiraAPI:
         """
         Escribe un valor en Redis y publica en el canal de actualización
         para que el WebSocket lo propague al dashboard.
+
+        Si existe la clave lock:point:{id} (establecida por HiraTestAPI), la
+        escritura se rechaza para no interferir con una prueba funcional activa.
         """
         point_id = self._resolve_point_id(point_name)
         if point_id is None:
             self.log(f"write: punto '{point_name}' no encontrado")
+            return False
+        if self._get_redis().exists(f"lock:point:{point_id}"):
+            self.log(f"write: punto '{point_name}' bloqueado por prueba funcional activa")
+            logger.warning(
+                "Escritura bloqueada por lock de prueba",
+                extra={"point_name": point_name, "point_id": point_id},
+            )
             return False
         payload = json.dumps({
             "value": value,
