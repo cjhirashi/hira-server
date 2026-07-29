@@ -9,6 +9,8 @@ import ConfigPage from './components/config/ConfigPage'
 import LogicPage from './components/logic/LogicPage'
 import { AIChatPage } from './components/ai/AIChatPage'
 import { ClientAIChatPage } from './components/ai/ClientAIChatPage'
+import SystemStatusPage from './pages/SystemStatusPage'
+import NotificationsConfigPage from './pages/NotificationsConfigPage'
 import { useAuthStore } from './store/authStore'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -64,6 +66,8 @@ export default function App() {
           <Route path="ai/cliente" element={<OperadorRoute><ClientAIChatPage /></OperadorRoute>} />
           {/* Compat: /ai redirige a /ai/integrador (Admin) o /ai/cliente (Operador) */}
           <Route path="ai" element={<Navigate to="/ai/integrador" replace />} />
+          <Route path="system/status" element={<OperadorRoute><SystemStatusPage /></OperadorRoute>} />
+          <Route path="studio/notifications" element={<AdminRoute><NotificationsConfigPage /></AdminRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

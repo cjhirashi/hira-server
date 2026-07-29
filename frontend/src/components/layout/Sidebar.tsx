@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Bell, BarChart2, Settings,
-  Code2, Sparkles, LogOut, Zap, Wrench, type LucideIcon,
+  Code2, Sparkles, LogOut, Zap, Wrench, Activity, type LucideIcon,
 } from 'lucide-react'
 import { useAlarmsStore } from '../../store/alarmsStore'
 import { useAuthStore } from '../../store/authStore'
@@ -48,7 +48,7 @@ function NavItem({ to, label, Icon, badge }: { to: string; label: string; Icon: 
         const el = e.currentTarget
         if (!el.getAttribute('aria-current')) {
           el.style.background = ''
-          el.style.color = ''
+          el.style.color = 'var(--text-secondary)'
         }
       }}
     >
@@ -192,6 +192,9 @@ export default function Sidebar() {
         {operadorOrAdmin && (
           <NavItem to="/ai/cliente" label="AI Asistente" Icon={Sparkles} />
         )}
+        {operadorOrAdmin && (
+          <NavItem to="/system/status" label="Estado del Sistema" Icon={Activity} />
+        )}
 
         {/* Hira Studio — solo Admin */}
         {adminUser && (
@@ -201,6 +204,7 @@ export default function Sidebar() {
             <NavItem to="/config" label="Configuración" Icon={Settings} />
             <NavItem to="/logic" label="Lógica" Icon={Code2} />
             <NavItem to="/ai/integrador" label="AI Integrador" Icon={Sparkles} />
+            <NavItem to="/studio/notifications" label="Notificaciones" Icon={Bell} />
           </>
         )}
       </div>
