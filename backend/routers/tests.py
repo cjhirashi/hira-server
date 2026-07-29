@@ -56,7 +56,7 @@ async def create_script(
             {"name": body.name, "desc": body.description, "code": body.code},
         )
         row = result.fetchone()
-    logger.info("Test script creado", extra={"name": body.name})
+    logger.info("Test script creado", extra={"script_name": body.name})
     return _script_row(row)
 
 
