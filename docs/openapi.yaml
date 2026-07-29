@@ -50,6 +50,8 @@ tags:
     description: Agente del Integrador — chat con LLM, tools del sistema, configuración de proveedor y API key.
   - name: Notifications
     description: Reglas de notificación por email/webhook y historial de eventos del sistema.
+  - name: Tests
+    description: Motor de Pruebas Funcionales — scripts Python con sandbox, ejecuciones y logs.
 
 paths:
   /health:
@@ -2192,6 +2194,188 @@ paths:
         "404":
           description: Punto no encontrado
 
+  # ── Tests ──────────────────────────────────────────────────────────────────
+
+  /v1/tests/scripts:
+    get:
+      operationId: list_test_scripts
+      summary: Listar scripts de prueba
+      tags: [Tests]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de scripts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TestScriptResponse"
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso tests:read
+
+    post:
+      operationId: create_test_script
+      summary: Crear script de prueba
+      tags: [Tests]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestScriptCreate"
+      responses:
+        "201":
+          description: Script creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestScriptResponse"
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso tests:write
+
+  /v1/tests/scripts/{script_id}:
+    get:
+      operationId: get_test_script
+      summary: Obtener script de prueba
+      tags: [Tests]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TestScriptId"
+      responses:
+        "200":
+          description: Script encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestScriptResponse"
+        "404":
+          description: Script no encontrado
+
+    put:
+      operationId: update_test_script
+      summary: Actualizar script de prueba
+      tags: [Tests]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TestScriptId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestScriptUpdate"
+      responses:
+        "200":
+          description: Script actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestScriptResponse"
+        "404":
+          description: Script no encontrado
+
+    delete:
+      operationId: delete_test_script
+      summary: Eliminar script de prueba
+      tags: [Tests]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TestScriptId"
+      responses:
+        "204":
+          description: Script eliminado
+        "404":
+          description: Script no encontrado
+
+  /v1/tests/scripts/{script_id}/run:
+    post:
+      operationId: run_test_script
+      summary: Ejecutar script de prueba
+      description: Encola el script en la queue `high` de Celery (concurrencia 2). Retorna el ID de ejecución.
+      tags: [Tests]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TestScriptId"
+      responses:
+        "202":
+          description: Ejecución encolada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  execution_id:
+                    type: integer
+                  status:
+                    type: string
+                    example: running
+        "404":
+          description: Script no encontrado
+        "409":
+          description: El script ya está en ejecución
+
+  /v1/tests/scripts/{script_id}/executions:
+    get:
+      operationId: list_test_executions
+      summary: Historial de ejecuciones del script
+      tags: [Tests]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TestScriptId"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Lista de ejecuciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TestExecutionResponse"
+
+  /v1/tests/executions/{execution_id}:
+    get:
+      operationId: get_test_execution
+      summary: Obtener ejecución con logs
+      tags: [Tests]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: execution_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ejecución con logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestExecutionDetail"
+        "404":
+          description: Ejecución no encontrada
+
 components:
   securitySchemes:
     BearerAuth:
@@ -2266,6 +2450,15 @@ components:
         type: integer
         minimum: 1
       description: ID numérico del script de lógica
+
+    TestScriptId:
+      name: script_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: ID numérico del script de prueba
 
   schemas:
     # ── Monitor ──────────────────────────────────────────────────────────────
@@ -3149,6 +3342,130 @@ components:
         error_message:
           type: string
           nullable: true
+
+    # ── Tests ─────────────────────────────────────────────────────────────────
+
+    TestScriptCreate:
+      type: object
+      required:
+        - name
+        - code
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: "Prueba setpoint AHU-01"
+        description:
+          type: string
+          nullable: true
+        code:
+          type: string
+          example: "hira.write('setpoint', 22.0)\nval = hira.read('setpoint')\nhira.assert_equal('setpoint', 22.0)"
+
+    TestScriptUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        code:
+          type: string
+          nullable: true
+
+    TestScriptResponse:
+      type: object
+      required:
+        - id
+        - name
+        - code
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TestExecutionResponse:
+      type: object
+      required:
+        - id
+        - script_id
+        - started_at
+        - status
+      properties:
+        id:
+          type: integer
+        script_id:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [running, success, failure, error]
+        output:
+          type: string
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        passed:
+          type: integer
+          description: Número de assertions que pasaron
+          nullable: true
+        failed:
+          type: integer
+          description: Número de assertions que fallaron
+          nullable: true
+
+    TestLogEntry:
+      type: object
+      required:
+        - id
+        - level
+        - message
+        - created_at
+      properties:
+        id:
+          type: integer
+        level:
+          type: string
+          enum: [info, pass, fail, error]
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    TestExecutionDetail:
+      allOf:
+        - $ref: "#/components/schemas/TestExecutionResponse"
+        - type: object
+          properties:
+            logs:
+              type: array
+              items:
+                $ref: "#/components/schemas/TestLogEntry"
 
   /ai/config:
     get:
