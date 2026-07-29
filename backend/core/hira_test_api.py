@@ -4,8 +4,10 @@ API de pruebas funcionales inyectada en el sandbox de test scripts.
 Extiende HiraAPI con:
 - write() que establece un lock Redis (lock:point:{id}) antes de escribir
 - assert_equal() / assert_between() para verificaciones funcionales
-- Recolección de logs tipados (info/pass/fail/error) por ejecución
+- Recolección de logs tipados (info/pass/fail/error/data) por ejecución
+- Logs DATA: cada read/write exitoso emite un log estructurado JSON para análisis
 """
+import json as _json
 from core.hira_api import HiraAPI
 from core.logger import get_logger
 
@@ -30,14 +32,17 @@ class HiraTestAPI(HiraAPI):
         self._failed: int = 0
 
     def write(self, point_name: str, value: float) -> bool:
-        """Establece lock Redis en el punto y luego escribe el valor."""
+        """Establece lock Redis en el punto, escribe el valor y emite log DATA."""
         point_id = self._resolve_point_id(point_name)
         if point_id is None:
             self.log(f"write: punto '{point_name}' no encontrado")
             self._add_log("error", f"write: punto '{point_name}' no encontrado")
             return False
         self._get_redis().setex(f"lock:point:{point_id}", _LOCK_TTL, "test")
-        return super().write(point_name, value)
+        ok = super().write(point_name, value)
+        if ok:
+            self._add_log("data", _json.dumps({"point_name": point_name, "action": "write", "value": float(value)}))
+        return ok
 
     def assert_equal(self, point_name: str, expected: float) -> bool:
         """Verifica que el valor del punto sea igual al esperado."""
@@ -68,6 +73,13 @@ class HiraTestAPI(HiraAPI):
             self._add_log("fail", msg)
         self.log(msg)
         return ok
+
+    def read(self, point_name: str) -> float | None:
+        """Lee el valor del punto y emite log DATA si hay valor."""
+        val = super().read(point_name)
+        if val is not None:
+            self._add_log("data", _json.dumps({"point_name": point_name, "action": "read", "value": float(val)}))
+        return val
 
     def info(self, message: str) -> None:
         """Registra un mensaje informativo en los logs de prueba."""
