@@ -48,6 +48,8 @@ tags:
     description: CRUD de áreas, dispositivos, puntos y usuarios desde la UI del Configurador. Requiere permiso `config:write`.
   - name: AI
     description: Agente del Integrador — chat con LLM, tools del sistema, configuración de proveedor y API key.
+  - name: Notifications
+    description: Reglas de notificación por email/webhook y historial de eventos del sistema.
 
 paths:
   /health:
@@ -3324,7 +3326,265 @@ components:
                     description: Tipo de base de datos en uso
                   version:
                     type: string
-                    example: "0.10c"
+                    example: "0.10"
+
+  /system/health/detailed:
+    get:
+      operationId: system_get_health_detailed
+      summary: Métricas detalladas del sistema por componente
+      tags: [Monitor]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Estado detallado de todos los componentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemHealthDetailed"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /notifications/rules:
+    get:
+      operationId: notifications_list_rules
+      summary: Listar reglas de notificación
+      tags: [Notifications]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de reglas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationRule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      operationId: notifications_create_rule
+      summary: Crear regla de notificación (Admin)
+      tags: [Notifications]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_type, channel, destination]
+              properties:
+                event_type:
+                  type: string
+                  enum: [device_offline, worker_down, disk_full, alarm_flood, backup_failed]
+                channel:
+                  type: string
+                  enum: [email, webhook]
+                destination:
+                  type: string
+                threshold_minutes:
+                  type: integer
+                  default: 5
+                enabled:
+                  type: boolean
+                  default: true
+      responses:
+        "201":
+          description: Regla creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationRule"
+        "422":
+          description: Validación fallida
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /notifications/rules/{id}:
+    patch:
+      operationId: notifications_patch_rule
+      summary: Activar/desactivar regla (Admin)
+      tags: [Notifications]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        "200":
+          description: Regla actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationRule"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    delete:
+      operationId: notifications_delete_rule
+      summary: Eliminar regla (Admin)
+      tags: [Notifications]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Regla eliminada
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /notifications/events:
+    get:
+      operationId: notifications_list_events
+      summary: Historial de eventos del sistema (paginado)
+      tags: [Notifications]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [critical, warning, info]
+      responses:
+        "200":
+          description: Lista de eventos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SystemEvent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /notifications/events/{id}/resolve:
+    patch:
+      operationId: notifications_resolve_event
+      summary: Marcar evento como resuelto (Admin)
+      tags: [Notifications]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Evento resuelto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemEvent"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /ai/integrador/usage:
+    get:
+      operationId: ai_integrador_usage
+      summary: Uso de tokens del agente integrador (Admin)
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Uso de tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIUsage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /ai/cliente/usage:
+    get:
+      operationId: ai_cliente_usage
+      summary: Uso de tokens del agente cliente (Admin + Operador)
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Uso de tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIUsage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /system/crash-report:
+    post:
+      operationId: system_crash_report
+      summary: Reporte interno de crash (uso interno del exception handler)
+      tags: [Monitor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Reporte recibido
 
     AIConfigResponse:
       type: object
@@ -3383,3 +3643,88 @@ components:
           items:
             type: object
           nullable: true
+
+    NotificationRule:
+      type: object
+      required: [id, event_type, channel, destination, threshold_minutes, enabled, created_at]
+      properties:
+        id:
+          type: integer
+        event_type:
+          type: string
+          enum: [device_offline, worker_down, disk_full, alarm_flood, backup_failed]
+        channel:
+          type: string
+          enum: [email, webhook]
+        destination:
+          type: string
+        threshold_minutes:
+          type: integer
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    SystemEvent:
+      type: object
+      required: [id, event_type, severity, message, notified, created_at]
+      properties:
+        id:
+          type: integer
+        event_type:
+          type: string
+          enum: [device_offline, worker_down, disk_full, alarm_flood, backup_failed]
+        severity:
+          type: string
+          enum: [critical, warning, info]
+        message:
+          type: string
+        metadata:
+          type: object
+          nullable: true
+        notified:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    SystemHealthDetailed:
+      type: object
+      required: [status, timestamp, components]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, critical]
+        timestamp:
+          type: string
+          format: date-time
+        components:
+          type: object
+          properties:
+            database:
+              type: object
+            redis:
+              type: object
+            celery:
+              type: object
+            disk:
+              type: object
+            devices:
+              type: object
+
+    AIUsage:
+      type: object
+      required: [agent_type, total_tokens, estimated_cost_usd, period_days]
+      properties:
+        agent_type:
+          type: string
+          enum: [integrador, cliente]
+        total_tokens:
+          type: integer
+        estimated_cost_usd:
+          type: number
+        period_days:
+          type: integer
