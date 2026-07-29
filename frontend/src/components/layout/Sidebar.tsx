@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Bell, BarChart2, Settings,
-  Code2, Sparkles, LogOut, Zap, Wrench, Activity, type LucideIcon,
+  Code2, Sparkles, LogOut, Zap, Wrench, Activity, FlaskConical, type LucideIcon,
 } from 'lucide-react'
 import { useAlarmsStore } from '../../store/alarmsStore'
 import { useAuthStore } from '../../store/authStore'
@@ -205,6 +205,7 @@ export default function Sidebar() {
             <NavItem to="/logic" label="Lógica" Icon={Code2} />
             <NavItem to="/ai/integrador" label="AI Integrador" Icon={Sparkles} />
             <NavItem to="/studio/notifications" label="Notificaciones" Icon={Bell} />
+            <NavItem to="/tests" label="Pruebas" Icon={FlaskConical} />
           </>
         )}
       </div>
