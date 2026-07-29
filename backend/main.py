@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
 
 from core.config import settings
@@ -23,6 +24,7 @@ from routers.history import router as history_router
 from routers.logic import router as logic_router
 from routers.ai import router as ai_router
 from routers.system import router as system_router
+from routers.notifications import router as notifications_router
 from routers.mimics import router as mimics_router
 from routers.ws import router as ws_router
 from websocket.redis_subscriber import start_subscriber, stop_subscriber
@@ -229,5 +231,19 @@ app.include_router(history_router, prefix="/api/v1")
 app.include_router(logic_router, prefix="/api/v1")
 app.include_router(ai_router, prefix="/api/v1")
 app.include_router(system_router, prefix="/api/v1")
+app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(mimics_router, prefix="/api/v1")
 app.include_router(ws_router)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error(
+        "Unhandled exception",
+        extra={"path": request.url.path, "error": str(exc), "type": type(exc).__name__},
+    )
+    if settings.crash_reporter_enabled:
+        import asyncio
+        from services.crash_reporter import send_crash_report
+        asyncio.create_task(send_crash_report(request, exc))
+    return JSONResponse(status_code=500, content={"detail": "Error interno del servidor"})

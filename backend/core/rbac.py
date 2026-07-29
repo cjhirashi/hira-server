@@ -34,6 +34,8 @@ _ROLE_PERMISSIONS: dict[str, list[str]] = {
         "backup:read", "backup:write",
         "config:read", "config:write",
         "ai:read", "ai:write",
+        "system:read",
+        "notifications:read", "notifications:write",
     ],
     "Operador": [
         "users:read",
@@ -44,6 +46,8 @@ _ROLE_PERMISSIONS: dict[str, list[str]] = {
         "historicals:read",
         "config:read", "config:write",
         "ai:read", "ai:write",
+        "system:read",
+        "notifications:read",
     ],
     "Visor": [
         "points:read",

@@ -50,8 +50,16 @@ class Settings(BaseSettings):
     admin_password: str = Field(default="", description="Contraseña del usuario Admin inicial")
     admin_full_name: str = Field(default="Administrador Hira")
 
+    # ── SMTP ──────────────────────────────────────────────────────────────
+    smtp_host: str = Field(default="")
+    smtp_port: int = Field(default=587)
+    smtp_user: str = Field(default="")
+    smtp_password: str = Field(default="")
+    smtp_from: str = Field(default="")
+
     # ── Observabilidad ─────────────────────────────────────────────────────
     crash_reporter_enabled: bool = Field(default=False)
+    crash_reporter_url: str = Field(default="https://crashes.hira.io/v1/report")
     environment: Literal["development", "production", "test"] = Field(default="development")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(default="INFO")
 

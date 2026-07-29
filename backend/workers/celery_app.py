@@ -12,6 +12,7 @@ celery_app = Celery(
         "workers.simulator_runner",
         "workers.alarm_worker",
         "workers.logic_worker",
+        "workers.monitor_worker",
     ],
 )
 
@@ -33,6 +34,11 @@ celery_app.conf.update(
         "evaluate-alarms-every-10s": {
             "task": "workers.alarm_worker.evaluate_alarms",
             "schedule": 10.0,
+            "options": {"queue": "normal"},
+        },
+        "monitor-system-every-60s": {
+            "task": "workers.monitor_worker.monitor_system",
+            "schedule": 60.0,
             "options": {"queue": "normal"},
         },
     },
