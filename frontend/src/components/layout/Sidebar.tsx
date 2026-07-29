@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Bell, BarChart2, Settings,
+  LayoutDashboard, Bell, BarChart2, BarChart3, Settings,
   Code2, Sparkles, LogOut, Zap, Wrench, Activity, FlaskConical, type LucideIcon,
 } from 'lucide-react'
 import { useAlarmsStore } from '../../store/alarmsStore'
@@ -189,6 +189,7 @@ export default function Sidebar() {
         <NavItem to="/dashboard" label="Dashboard" Icon={LayoutDashboard} />
         <NavItem to="/alarms" label="Alarmas" Icon={Bell} badge />
         <NavItem to="/history" label="Históricos" Icon={BarChart2} />
+        <NavItem to="/analysis" label="Análisis" Icon={BarChart3} />
         {operadorOrAdmin && (
           <NavItem to="/ai/cliente" label="AI Asistente" Icon={Sparkles} />
         )}
