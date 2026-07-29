@@ -52,6 +52,8 @@ tags:
     description: Reglas de notificación por email/webhook y historial de eventos del sistema.
   - name: Tests
     description: Motor de Pruebas Funcionales — scripts Python con sandbox, ejecuciones y logs.
+  - name: Analysis
+    description: Análisis de ejecuciones de prueba e históricos de puntos — gráficas y reportes PDF.
 
 paths:
   /health:
@@ -2194,6 +2196,160 @@ paths:
         "404":
           description: Punto no encontrado
 
+  # ── Analysis ───────────────────────────────────────────────────────────────
+
+  /v1/analysis/executions/{exec_id}/chart:
+    get:
+      operationId: get_execution_chart
+      summary: Datos de puntos medidos en una ejecución (para gráfica)
+      tags: [Analysis]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: exec_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: point_name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nombre de punto específico
+      responses:
+        "200":
+          description: Array de puntos de datos cronológicos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChartDataPoint"
+        "404":
+          description: Ejecución no encontrada
+
+  /v1/analysis/executions/compare:
+    get:
+      operationId: compare_executions_analysis
+      summary: Comparar 2-5 ejecuciones del mismo script en eje de tiempo relativo
+      tags: [Analysis]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema:
+            type: string
+          description: IDs separados por coma (máx 5), e.g. "1,2,3"
+      responses:
+        "200":
+          description: Array por ejecución con puntos en tiempo relativo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExecutionCompareRow"
+        "400":
+          description: IDs de scripts distintos o más de 5 IDs
+
+  /v1/analysis/scripts/{script_id}/trend:
+    get:
+      operationId: get_script_trend
+      summary: Tendencia histórica de ejecuciones de un script
+      tags: [Analysis]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: script_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Historial de ejecuciones con duración y status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScriptTrendRow"
+
+  /v1/analysis/executions/{exec_id}/report:
+    get:
+      operationId: download_execution_report
+      summary: Descargar reporte PDF de una ejecución de prueba
+      tags: [Analysis]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: exec_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PDF del reporte de ejecución
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: 'attachment; filename="report_1.pdf"'
+        "404":
+          description: Ejecución no encontrada
+
+  /v1/analysis/history/{point_id}/report:
+    get:
+      operationId: download_history_report
+      summary: Descargar reporte PDF de histórico de un punto
+      tags: [Analysis]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: point_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: bucket
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [raw, 1min, 5min, 1hour, 1day]
+            default: 1hour
+      responses:
+        "200":
+          description: PDF del histórico del punto
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Punto no encontrado
+
   # ── Tests ──────────────────────────────────────────────────────────────────
 
   /v1/tests/scripts:
@@ -3466,6 +3622,60 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/TestLogEntry"
+
+    # ── Analysis ──────────────────────────────────────────────────────────────
+
+    ChartDataPoint:
+      type: object
+      required: [timestamp, point_name, value]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        point_name:
+          type: string
+        value:
+          type: number
+
+    ExecutionCompareRow:
+      type: object
+      required: [execution_id, started_at, points]
+      properties:
+        execution_id:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+        points:
+          type: array
+          items:
+            type: object
+            properties:
+              t_offset_ms:
+                type: integer
+              point_name:
+                type: string
+              value:
+                type: number
+
+    ScriptTrendRow:
+      type: object
+      required: [execution_id, started_at, status]
+      properties:
+        execution_id:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [running, success, failure, error]
+        duration_ms:
+          type: integer
+          nullable: true
+        result_summary:
+          type: string
+          nullable: true
 
   /ai/config:
     get:
