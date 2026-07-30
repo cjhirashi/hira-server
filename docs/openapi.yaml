@@ -54,6 +54,8 @@ tags:
     description: Motor de Pruebas Funcionales — scripts Python con sandbox, ejecuciones y logs.
   - name: Analysis
     description: Análisis de ejecuciones de prueba e históricos de puntos — gráficas y reportes PDF.
+  - name: Documentation
+    description: Módulo de documentación — generación automática desde AST de scripts Python e inventario del proyecto, más documentos manuales.
 
 paths:
   /health:
@@ -2532,6 +2534,190 @@ paths:
         "404":
           description: Ejecución no encontrada
 
+  # ── Documentation ────────────────────────────────────────────────────────────
+
+  /v1/docs:
+    get:
+      operationId: list_documents
+      summary: Listar todos los documentos (sin content_markdown)
+      tags: [Documentation]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de documentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentSummary"
+    post:
+      operationId: create_document
+      summary: Crear documento manual
+      tags: [Documentation]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentCreate"
+      responses:
+        "201":
+          description: Documento creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+
+  /v1/docs/{id}:
+    get:
+      operationId: get_document
+      summary: Obtener documento completo con content_markdown
+      tags: [Documentation]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Documento completo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+        "404":
+          description: Documento no encontrado
+    put:
+      operationId: update_document
+      summary: Actualizar documento manual
+      tags: [Documentation]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentCreate"
+      responses:
+        "200":
+          description: Documento actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+        "400":
+          description: No se puede actualizar un documento auto-generado
+    delete:
+      operationId: delete_document
+      summary: Eliminar documento manual
+      tags: [Documentation]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Documento eliminado
+        "400":
+          description: No se puede eliminar un documento auto-generado
+
+  /v1/docs/generate/script/{script_id}:
+    post:
+      operationId: generate_script_doc
+      summary: Genera o regenera documentación de un script (logic o test)
+      tags: [Documentation]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: script_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: source_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [script_logic, script_test]
+            default: script_logic
+      responses:
+        "200":
+          description: Documento generado/actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+        "404":
+          description: Script no encontrado
+
+  /v1/docs/generate/inventory:
+    post:
+      operationId: generate_inventory_doc
+      summary: Genera o regenera el inventario del proyecto
+      tags: [Documentation]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Documento de inventario generado/actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+
+  /v1/docs/generate/preview/{script_id}:
+    get:
+      operationId: preview_mermaid
+      summary: Vista previa del diagrama Mermaid sin guardar
+      tags: [Documentation]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: script_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: source_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [script_logic, script_test]
+            default: script_logic
+      responses:
+        "200":
+          description: Diagrama Mermaid como string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mermaid:
+                    type: string
+                    example: "flowchart TD\n    START([\"▶ Mi Script\"])\n    ..."
+        "404":
+          description: Script no encontrado
+
 components:
   securitySchemes:
     BearerAuth:
@@ -3676,6 +3862,49 @@ components:
         result_summary:
           type: string
           nullable: true
+
+    DocumentSummary:
+      type: object
+      required: [id, title, type, generated_at, updated_at]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+          enum: [auto_script, auto_inventory, manual]
+        source_type:
+          type: string
+          nullable: true
+        source_id:
+          type: integer
+          nullable: true
+        generated_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DocumentResponse:
+      allOf:
+        - $ref: "#/components/schemas/DocumentSummary"
+        - type: object
+          required: [content_markdown]
+          properties:
+            content_markdown:
+              type: string
+
+    DocumentCreate:
+      type: object
+      required: [title, content_markdown]
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content_markdown:
+          type: string
 
   /ai/config:
     get:
