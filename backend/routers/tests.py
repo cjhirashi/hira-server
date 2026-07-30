@@ -203,6 +203,40 @@ async def list_executions(
     return [_exec_row(r) for r in rows]
 
 
+@router.get("/executions/recent")
+async def list_recent_executions(
+    limit: Annotated[int, Query(ge=1, le=50)] = 5,
+    _: dict = Depends(require_permission("tests:read")),
+):
+    """Últimas N ejecuciones de prueba (todas las scripts, ordenadas por fecha desc)."""
+    adapter = get_db_adapter()
+    async with adapter.get_session() as session:
+        result = await session.execute(
+            text(
+                "SELECT te.id, te.script_id, ts.name as script_name, "
+                "te.started_at, te.ended_at, te.status, te.passed, te.failed "
+                "FROM test_executions te "
+                "JOIN test_scripts ts ON te.script_id = ts.id "
+                "ORDER BY te.started_at DESC LIMIT :limit"
+            ),
+            {"limit": limit},
+        )
+        rows = result.fetchall()
+    return [
+        {
+            "id": r[0],
+            "script_id": r[1],
+            "script_name": r[2],
+            "started_at": r[3],
+            "ended_at": r[4],
+            "status": r[5],
+            "passed": r[6],
+            "failed": r[7],
+        }
+        for r in rows
+    ]
+
+
 @router.get("/executions/{execution_id}")
 async def get_execution(
     execution_id: int,

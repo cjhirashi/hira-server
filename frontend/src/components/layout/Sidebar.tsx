@@ -205,6 +205,7 @@ export default function Sidebar() {
           <>
             <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '8px 0 4px' }} />
             <SectionLabel label="Hira Studio" icon={Wrench} />
+            <NavItem to="/studio/dashboard" label="Panel de Ingeniería" Icon={LayoutDashboard} />
             <NavItem to="/config" label="Configuración" Icon={Settings} />
             <NavItem to="/logic" label="Lógica" Icon={Code2} />
             <NavItem to="/ai/integrador" label="AI Integrador" Icon={Sparkles} />

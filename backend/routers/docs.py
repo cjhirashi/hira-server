@@ -19,6 +19,30 @@ class DocumentCreate(BaseModel):
     content_markdown: str
 
 
+# ── Stats ──────────────────────────────────────────────────────────────────────
+
+@router.get("/stats")
+async def get_docs_stats(user=Depends(require_permission("logic:read"))):
+    """Resumen rápido: total de documentos e indexados (con chunks)."""
+    def _run():
+        from sqlalchemy import create_engine, text
+        from core.config import settings
+        engine = create_engine(settings.sync_database_url, pool_pre_ping=True)
+        try:
+            with engine.connect() as conn:
+                total = conn.execute(text("SELECT COUNT(*) FROM documents")).scalar() or 0
+                indexed = conn.execute(
+                    text(
+                        "SELECT COUNT(DISTINCT document_id) FROM document_chunks"
+                    )
+                ).scalar() or 0
+        finally:
+            engine.dispose()
+        return {"total": total, "indexed": indexed}
+
+    return await asyncio.to_thread(_run)
+
+
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
 @router.get("")

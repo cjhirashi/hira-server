@@ -14,6 +14,7 @@ import NotificationsConfigPage from './pages/NotificationsConfigPage'
 import TestsPage from './pages/TestsPage'
 import AnalysisPage from './pages/AnalysisPage'
 import DocumentationPage from './pages/DocumentationPage'
+import StudioDashboard from './pages/StudioDashboard'
 import { useAuthStore } from './store/authStore'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -75,6 +76,7 @@ export default function App() {
           <Route path="analysis" element={<OperadorRoute><AnalysisPage /></OperadorRoute>} />
           <Route path="docs" element={<AdminRoute><DocumentationPage /></AdminRoute>} />
           <Route path="manual" element={<OperadorRoute><DocumentationPage readonly /></OperadorRoute>} />
+          <Route path="studio/dashboard" element={<AdminRoute><StudioDashboard /></AdminRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
