@@ -4,12 +4,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 
-from adapters.factory import get_db_adapter, get_protocol_adapter
+from adapters.factory import get_db_adapter
 from core.logger import get_logger
 from core.rbac import require_permission
 from models.devices import Device
 from models.points import Point
-from schemas.devices import DeviceCreate, DeviceResponse, DeviceScanResult, DeviceUpdate
+from schemas.devices import DeviceCreate, DeviceResponse, DeviceUpdate, ScanRequest, ScanResponse
 from schemas.points import PointValue
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
@@ -70,53 +70,45 @@ async def create_device(
     return _device_to_response(device)
 
 
-@router.post("/scan", response_model=DeviceScanResult)
+@router.post("/scan", response_model=ScanResponse)
 async def scan_devices(
-    body: dict[str, Any],
-    _: dict[str, Any] = Depends(require_permission("devices:write")),
+    body: ScanRequest,
+    _: dict[str, Any] = Depends(require_permission("config:write")),
 ) -> Any:
-    proto = body.get("protocol", "bacnet")
-    timeout_s = min(int(body.get("timeout_s", 5)), 30)
+    import asyncio as _asyncio
+    from services import scan_service
 
+    opts = body.options or {}
     t0 = time.monotonic()
-    try:
-        protocol_adapter = get_protocol_adapter(proto)
-        await protocol_adapter.connect()
-        raw_devices = await protocol_adapter.scan()
-        await protocol_adapter.disconnect()
-    except NotImplementedError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:
-        logger.error("Scan error", extra={"protocol": proto, "error": str(exc)})
-        raise HTTPException(status_code=503, detail=f"Error de escaneo: {exc}")
 
-    elapsed_ms = int((time.monotonic() - t0) * 1000)
+    if body.protocol == "bacnet":
+        timeout = int(opts.get("timeout_seconds", 5))
+        candidates = await _asyncio.to_thread(scan_service.scan_bacnet, timeout)
 
-    db_adapter = get_db_adapter()
-    result_devices: list[DeviceResponse] = []
-
-    for raw in raw_devices:
-        async with db_adapter.get_session() as session:
-            existing = await session.scalar(
-                select(Device).where(
-                    Device.protocol == proto,
-                    Device.address == raw.get("ip", raw.get("topic", "")),
-                )
+    elif body.protocol == "modbus":
+        ip_range = str(opts.get("ip_range", "192.168.1.1-254"))
+        port = int(opts.get("port", 502))
+        timeout_per_host = float(opts.get("timeout_per_host", 1.0))
+        try:
+            candidates = await _asyncio.to_thread(
+                scan_service.scan_modbus, ip_range, port, timeout_per_host
             )
-            if existing is None:
-                device = Device(
-                    name=raw.get("name", f"{proto}-{raw.get('instance', 'unknown')}"),
-                    protocol=proto, address=raw.get("ip", raw.get("topic", "")),
-                    port=None, config_json=raw, area="", status="online",
-                    is_simulator=False, auto_start=False,
-                )
-                session.add(device)
-                await session.flush()
-                existing = device
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
 
-        result_devices.append(_device_to_response(existing))
+    else:  # mqtt
+        duration = int(opts.get("duration_seconds", 10))
+        candidates = await _asyncio.to_thread(scan_service.scan_mqtt, duration)
 
-    return DeviceScanResult(discovered=result_devices, scan_duration_ms=elapsed_ms)
+    logger.info(
+        "Scan completado",
+        extra={"protocol": body.protocol, "found": len(candidates)},
+    )
+    return ScanResponse(
+        protocol=body.protocol,
+        duration_seconds=round(time.monotonic() - t0, 2),
+        candidates=candidates,
+    )
 
 
 @router.get("/{device_id}", response_model=DeviceResponse)
