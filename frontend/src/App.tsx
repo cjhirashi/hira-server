@@ -15,6 +15,9 @@ import TestsPage from './pages/TestsPage'
 import AnalysisPage from './pages/AnalysisPage'
 import DocumentationPage from './pages/DocumentationPage'
 import StudioDashboard from './pages/StudioDashboard'
+import MimicsListPage from './pages/MimicsListPage'
+import MimicsEditorPage from './pages/MimicsEditorPage'
+import MimicsViewerPage from './pages/MimicsViewerPage'
 import { useAuthStore } from './store/authStore'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -77,6 +80,10 @@ export default function App() {
           <Route path="docs" element={<AdminRoute><DocumentationPage /></AdminRoute>} />
           <Route path="manual" element={<OperadorRoute><DocumentationPage readonly /></OperadorRoute>} />
           <Route path="studio/dashboard" element={<AdminRoute><StudioDashboard /></AdminRoute>} />
+          <Route path="studio/mimics" element={<AdminRoute><MimicsListPage /></AdminRoute>} />
+          <Route path="studio/mimics/:id" element={<AdminRoute><MimicsEditorPage /></AdminRoute>} />
+          <Route path="mimics" element={<OperadorRoute><MimicsListPage /></OperadorRoute>} />
+          <Route path="mimics/:id" element={<OperadorRoute><MimicsViewerPage /></OperadorRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
