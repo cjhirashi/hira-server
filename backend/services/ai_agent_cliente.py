@@ -200,7 +200,44 @@ def acknowledge_alarm(alarm_id: int, comment: str = "") -> str:
     return f"Alarma {alarm_id} reconocida correctamente." + (f" Comentario: {comment}" if comment else "")
 
 
-_TOOLS = [get_point_value, get_active_alarms, get_point_history_summary, get_device_status, acknowledge_alarm]
+@tool
+def search_docs(query: str, top_k: int = 5) -> str:
+    """
+    Busca en la documentación del proyecto fragmentos relevantes para la consulta.
+    Útil para responder preguntas sobre configuración del sistema, scripts y equipos.
+
+    Args:
+        query: Pregunta o tema a buscar
+        top_k: Número máximo de fragmentos a retornar (default 5)
+
+    Returns:
+        String con los fragmentos más relevantes formateados para el agente.
+    """
+    try:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        from services.rag_service import semantic_search
+
+        engine = create_engine(settings.sync_database_url, pool_pre_ping=True)
+        try:
+            with Session(engine) as session:
+                results = semantic_search(query, top_k, session)
+        finally:
+            engine.dispose()
+
+        if not results:
+            return "No se encontró documentación relevante para esta consulta."
+
+        parts = []
+        for r in results:
+            parts.append(f"**{r['document_title']}** (relevancia: {r['score']:.2f})\n{r['content']}")
+
+        return "\n\n---\n\n".join(parts)
+    except RuntimeError as exc:
+        return f"No se pudo acceder a la documentación: {exc}"
+
+
+_TOOLS = [get_point_value, get_active_alarms, get_point_history_summary, get_device_status, acknowledge_alarm, search_docs]
 
 _SYSTEM_PROMPT = """Eres el Agente del Cliente de Hira SCADA. Tu función es asistir al operador \
 en el monitoreo y operación del sistema.
@@ -211,6 +248,7 @@ Puedes:
 - Obtener resúmenes estadísticos de históricos
 - Verificar el estado de conectividad de dispositivos
 - Reconocer alarmas activas (SIEMPRE pide confirmación explícita antes de hacerlo)
+- Buscar en la documentación del proyecto con search_docs para responder preguntas técnicas
 
 NO puedes:
 - Crear ni modificar scripts de lógica

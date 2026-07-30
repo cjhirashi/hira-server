@@ -245,7 +245,44 @@ def write_point(point_name: str, value: float) -> str:
     return f"Punto '{point_name}' actualizado a {value}."
 
 
-_TOOLS = [get_point_value, get_point_list, get_device_list, get_alarm_status, create_logic_script_draft, write_point]
+@tool
+def search_docs(query: str, top_k: int = 5) -> str:
+    """
+    Busca en la documentación del proyecto fragmentos relevantes para la consulta.
+    Útil para responder preguntas sobre configuración, scripts, y equipos.
+
+    Args:
+        query: Pregunta o tema a buscar
+        top_k: Número máximo de fragmentos a retornar (default 5)
+
+    Returns:
+        String con los fragmentos más relevantes formateados para el agente.
+    """
+    try:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        from services.rag_service import semantic_search
+
+        engine = create_engine(_SYNC_URL, pool_pre_ping=True)
+        try:
+            with Session(engine) as session:
+                results = semantic_search(query, top_k, session)
+        finally:
+            engine.dispose()
+
+        if not results:
+            return "No se encontró documentación relevante para esta consulta."
+
+        parts = []
+        for r in results:
+            parts.append(f"**{r['document_title']}** (relevancia: {r['score']:.2f})\n{r['content']}")
+
+        return "\n\n---\n\n".join(parts)
+    except RuntimeError as exc:
+        return f"No se pudo acceder a la documentación: {exc}"
+
+
+_TOOLS = [get_point_value, get_point_list, get_device_list, get_alarm_status, create_logic_script_draft, write_point, search_docs]
 _TOOLS_BY_NAME = {t.name: t for t in _TOOLS}
 
 _SYSTEM_PROMPT = """Eres el Agente del Integrador de Hira SCADA. Tu rol es ayudar al integrador \
@@ -258,8 +295,9 @@ Puntos registrados:
 Dispositivos:
 {devices}
 
-Puedes leer valores en tiempo real, listar alarmas activas, y generar borradores de scripts Python \
-usando la API `hira`. Para escribir valores a un punto, SIEMPRE pide confirmación explícita \
+Puedes leer valores en tiempo real, listar alarmas activas, generar borradores de scripts Python \
+usando la API `hira`, y buscar en la documentación del proyecto con search_docs. \
+Para escribir valores a un punto, SIEMPRE pide confirmación explícita \
 antes de ejecutar la herramienta write_point.
 Responde en el mismo idioma del usuario."""
 
