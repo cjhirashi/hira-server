@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # ── Seguridad ──────────────────────────────────────────────────────────
     secret_key: str = Field(description="Clave secreta para JWT y cifrado")
-    license_key: str = Field(default="", description="Clave de licencia emitida por Hira Hub. Vacío en modo dev.")
+    license_key: str = Field(default="", description="Clave de licencia Hira")
     cors_origins: str = Field(default="http://localhost:5173")
 
     # ── MQTT ──────────────────────────────────────────────────────────────
@@ -43,7 +43,8 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="", description="API key de OpenAI para embeddings RAG")
 
     # ── Hub ───────────────────────────────────────────────────────────────
-    hub_url: str = Field(default="", description="URL base de Hira Hub. Vacío en modo dev (sin restricciones).")
+    hub_api_url: str = Field(default="")
+    hub_api_key: str = Field(default="")
 
     # ── Admin inicial ──────────────────────────────────────────────────────
     admin_email: str = Field(default="admin@hira.local", description="Email del usuario Admin inicial")
