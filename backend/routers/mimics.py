@@ -17,8 +17,9 @@ def _to_response(m: Mimic) -> MimicResponse:
     return MimicResponse(
         id=m.id,
         name=m.name,
+        description=getattr(m, "description", None),
         schema_version=m.schema_version,
-        canvas=m.canvas_json or {"width": 1200, "height": 800, "background": "#0d0d1a"},
+        canvas=m.canvas_json,
         elements=m.elements_json or [],
         connections=m.connections_json or [],
         updated_at=m.updated_at,
@@ -62,6 +63,8 @@ async def create_mimic(
             elements_json=body.elements,
             connections_json=body.connections,
         )
+        if hasattr(mimic, "description"):
+            mimic.description = body.description
         session.add(mimic)
         await session.flush()
         mimic_id = mimic.id

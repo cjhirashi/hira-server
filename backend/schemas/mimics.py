@@ -5,13 +5,15 @@ from pydantic import BaseModel
 
 class MimicCreate(BaseModel):
     name: str
-    canvas: dict[str, Any] = {}
+    description: str | None = None
+    canvas: dict[str, Any] | None = None
     elements: list[dict[str, Any]] = []
     connections: list[dict[str, Any]] = []
 
 
 class MimicUpdate(BaseModel):
     name: str | None = None
+    description: str | None = None
     canvas: dict[str, Any] | None = None
     elements: list[dict[str, Any]] | None = None
     connections: list[dict[str, Any]] | None = None
@@ -20,8 +22,9 @@ class MimicUpdate(BaseModel):
 class MimicResponse(BaseModel):
     id: int
     name: str
+    description: str | None = None
     schema_version: str
-    canvas: dict[str, Any]
+    canvas: dict[str, Any] | None
     elements: list[dict[str, Any]]
     connections: list[dict[str, Any]]
     updated_at: datetime
