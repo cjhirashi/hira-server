@@ -35,6 +35,8 @@ class PointCreate(BaseModel):
     log_enabled: bool = False
     history_interval_seconds: int = Field(default=60, ge=1)
     area_id: int | None = None
+    modbus_register_type: str | None = Field(default=None, pattern=r"^(coil|discrete_input|holding_register|input_register)$")
+    modbus_data_type: str | None = Field(default=None, pattern=r"^(bool|uint16|int16|float32)$")
 
 
 class PointUpdate(BaseModel):
@@ -45,6 +47,8 @@ class PointUpdate(BaseModel):
     log_enabled: bool | None = None
     history_interval_seconds: int | None = Field(default=None, ge=1)
     area_id: int | None = None
+    modbus_register_type: str | None = Field(default=None, pattern=r"^(coil|discrete_input|holding_register|input_register)$")
+    modbus_data_type: str | None = Field(default=None, pattern=r"^(bool|uint16|int16|float32)$")
 
 
 class PointResponse(BaseModel):
@@ -60,5 +64,7 @@ class PointResponse(BaseModel):
     history_interval_seconds: int
     area_id: int | None
     area_name: str | None = None
+    modbus_register_type: str | None = None
+    modbus_data_type: str | None = None
 
     model_config = {"from_attributes": True}

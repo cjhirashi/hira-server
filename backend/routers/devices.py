@@ -21,6 +21,9 @@ def _device_to_response(d: Device) -> DeviceResponse:
         id=d.id, name=d.name, protocol=d.protocol, address=d.address,
         port=d.port, config_json=d.config_json, area=d.area,
         status=d.status, is_simulator=d.is_simulator, auto_start=d.auto_start,
+        modbus_unit_id=d.modbus_unit_id,
+        modbus_transport=d.modbus_transport,
+        modbus_baudrate=d.modbus_baudrate,
     )
 
 
@@ -53,6 +56,9 @@ async def create_device(
             port=body.port, config_json=body.config_json,
             area=body.area or "", auto_start=body.auto_start,
             status="unknown", is_simulator=False,
+            modbus_unit_id=body.modbus_unit_id,
+            modbus_transport=body.modbus_transport,
+            modbus_baudrate=body.modbus_baudrate,
         )
         session.add(device)
         await session.flush()
@@ -157,6 +163,12 @@ async def update_device(
             device.area = body.area
         if body.auto_start is not None:
             device.auto_start = body.auto_start
+        if "modbus_unit_id" in body.model_fields_set:
+            device.modbus_unit_id = body.modbus_unit_id
+        if "modbus_transport" in body.model_fields_set:
+            device.modbus_transport = body.modbus_transport
+        if "modbus_baudrate" in body.model_fields_set:
+            device.modbus_baudrate = body.modbus_baudrate
 
     async with adapter.get_session() as session:
         device = await session.get(Device, device_id)

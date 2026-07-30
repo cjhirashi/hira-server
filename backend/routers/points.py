@@ -32,6 +32,8 @@ def _to_response(p: Point, area_name: str | None = None) -> PointResponse:
         history_interval_seconds=p.history_interval_seconds,
         area_id=p.area_id,
         area_name=area_name,
+        modbus_register_type=p.modbus_register_type,
+        modbus_data_type=p.modbus_data_type,
     )
 
 
@@ -64,6 +66,8 @@ async def create_point(
             log_enabled=body.log_enabled,
             history_interval_seconds=body.history_interval_seconds,
             area_id=body.area_id,
+            modbus_register_type=body.modbus_register_type,
+            modbus_data_type=body.modbus_data_type,
         )
         session.add(point)
         await session.flush()
@@ -129,6 +133,10 @@ async def update_point(
             point.history_interval_seconds = body.history_interval_seconds
         if "area_id" in body.model_fields_set:
             point.area_id = body.area_id
+        if "modbus_register_type" in body.model_fields_set:
+            point.modbus_register_type = body.modbus_register_type
+        if "modbus_data_type" in body.model_fields_set:
+            point.modbus_data_type = body.modbus_data_type
 
     logger.info("Punto actualizado", extra={"point_id": point_id})
 

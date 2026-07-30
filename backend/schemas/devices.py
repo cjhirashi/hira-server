@@ -10,6 +10,9 @@ class DeviceCreate(BaseModel):
     config_json: dict[str, Any] | None = None
     area: str | None = Field(default=None, max_length=100)
     auto_start: bool = False
+    modbus_unit_id: int | None = Field(default=None, ge=1, le=247)
+    modbus_transport: str | None = Field(default=None, pattern=r"^(tcp|rtu)$")
+    modbus_baudrate: int | None = None
 
 
 class DeviceUpdate(BaseModel):
@@ -20,6 +23,9 @@ class DeviceUpdate(BaseModel):
     area: str | None = Field(default=None, max_length=100)
     auto_start: bool | None = None
     is_simulator: bool | None = None
+    modbus_unit_id: int | None = Field(default=None, ge=1, le=247)
+    modbus_transport: str | None = Field(default=None, pattern=r"^(tcp|rtu)$")
+    modbus_baudrate: int | None = None
 
 
 class DeviceResponse(BaseModel):
@@ -33,6 +39,9 @@ class DeviceResponse(BaseModel):
     status: str
     is_simulator: bool
     auto_start: bool
+    modbus_unit_id: int | None = None
+    modbus_transport: str | None = None
+    modbus_baudrate: int | None = None
 
     model_config = {"from_attributes": True}
 
