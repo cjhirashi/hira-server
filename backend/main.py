@@ -195,6 +195,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await _seed_admin()
     await _seed_demo_mimic()
     await _seed_alarm_definitions()
+    if settings.license_key and settings.hub_url:
+        import asyncio as _asyncio
+        from services import license_service as _ls
+        _asyncio.create_task(_asyncio.to_thread(_ls.activate_license))
     start_subscriber()
     yield
     stop_subscriber()

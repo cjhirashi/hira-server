@@ -76,3 +76,13 @@ En validación T-33 el Operador pudo intentar la escritura (RBAC correcto, recib
 **Alternativa propuesta:** Cowork puede validar estos tres criterios con su propia API key ingresando en Configuración > IA, guardando la key y enviando las preguntas desde `/ai`.
 
 **Pendiente:** Validación manual por Cowork con API key real.
+
+---
+
+## DEV-006 — T-152/T-153 (Hub bootstrap) no implementados en este repo
+
+**Tarea afectada:** T-152, T-153 (Sprint 15)
+**Tipo:** Alcance
+**Descripción:** Las tareas T-152 y T-153 especifican implementar Hira Hub (FastAPI + PostgreSQL) con routers de licencias. Se aclaró en sesión que Hub es un producto independiente que vive en su propio repositorio, no en `hira-server`. No se crea carpeta `hub/` en este repo.
+
+**Resuelto:** T-154 implementado — `backend/services/license_service.py` es el cliente de Hira Server que *consume* la API de Hub. T-152/T-153 se implementarán en el repo separado de Hub.
