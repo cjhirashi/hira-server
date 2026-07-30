@@ -21,6 +21,9 @@ class Device(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="offline")
     is_simulator: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     auto_start: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    modbus_unit_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    modbus_transport: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    modbus_baudrate: Mapped[int | None] = mapped_column(Integer, nullable=True, default=9600)
 
     points: Mapped[list["Point"]] = relationship(back_populates="device")  # noqa: F821
     area_obj: Mapped["Area | None"] = relationship(back_populates="devices")  # noqa: F821

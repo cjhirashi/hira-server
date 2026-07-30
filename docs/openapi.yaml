@@ -3267,6 +3267,25 @@ components:
           type: boolean
           default: false
           description: Arrancar polling automáticamente al levantar el servidor
+        modbus_unit_id:
+          type: integer
+          minimum: 1
+          maximum: 247
+          nullable: true
+          description: "Modbus slave/unit ID (solo para protocol=MODBUS)"
+          example: 1
+        modbus_transport:
+          type: string
+          enum: [tcp, rtu]
+          nullable: true
+          description: "TCP o RTU (solo para protocol=MODBUS)"
+          example: tcp
+        modbus_baudrate:
+          type: integer
+          nullable: true
+          default: 9600
+          description: "Baudrate serial (solo para protocol=MODBUS y transport=RTU)"
+          example: 9600
 
     DeviceResponse:
       type: object
@@ -3314,6 +3333,18 @@ components:
         auto_start:
           type: boolean
           example: false
+        modbus_unit_id:
+          type: integer
+          nullable: true
+          example: 1
+        modbus_transport:
+          type: string
+          nullable: true
+          example: tcp
+        modbus_baudrate:
+          type: integer
+          nullable: true
+          example: 9600
 
     DeviceScanResult:
       type: object
@@ -3668,6 +3699,18 @@ components:
           nullable: true
           description: ID del área a la que pertenece el punto (opcional)
           example: 1
+        modbus_register_type:
+          type: string
+          enum: [coil, discrete_input, holding_register, input_register]
+          nullable: true
+          description: "Tipo de registro Modbus (solo para protocol=MODBUS)"
+          example: holding_register
+        modbus_data_type:
+          type: string
+          enum: [bool, uint16, int16, float32]
+          nullable: true
+          description: "Tipo de dato en el registro (solo para protocol=MODBUS)"
+          example: uint16
 
     PointUpdate:
       type: object
@@ -3743,6 +3786,14 @@ components:
           type: string
           nullable: true
           example: "Piso 3 — Sala de máquinas"
+        modbus_register_type:
+          type: string
+          nullable: true
+          example: holding_register
+        modbus_data_type:
+          type: string
+          nullable: true
+          example: uint16
 
     PointHistoryRecord:
       type: object

@@ -23,6 +23,8 @@ class Point(Base):
     area_id: Mapped[int | None] = mapped_column(
         ForeignKey("areas.id", ondelete="SET NULL"), nullable=True
     )
+    modbus_register_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    modbus_data_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     device: Mapped["Device"] = relationship(back_populates="points")  # noqa: F821
     area_obj: Mapped["Area | None"] = relationship(back_populates="points")  # noqa: F821
