@@ -2857,6 +2857,90 @@ paths:
         "403":
           description: Sin permiso logic:read
 
+  # ── Project Export / Import ──────────────────────────────────────────────
+
+  /api/v1/project/export/preview:
+    get:
+      summary: Preview del backup — conteos sin generar el archivo
+      tags: [Project]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Resumen del proyecto exportable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportPreview'
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso config:write
+
+  /api/v1/project/export:
+    get:
+      summary: Descarga backup completo del proyecto en formato .hira (gzip)
+      tags: [Project]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Archivo .hira (JSON comprimido con gzip)
+          content:
+            application/gzip:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              example: 'attachment; filename="hira_project_20260101_120000.hira"'
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso config:write
+
+  /api/v1/project/import:
+    post:
+      summary: Importa un archivo .hira al proyecto actual
+      tags: [Project]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, mode]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Archivo .hira a importar
+                mode:
+                  type: string
+                  enum: [merge, replace]
+                  description: merge=agrega sin sobreescribir, replace=elimina todo y reinserta
+                confirm:
+                  type: boolean
+                  default: false
+                  description: Requerido true si mode=replace (confirmación explícita)
+      responses:
+        "200":
+          description: Resultado de la importación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResult'
+        "400":
+          description: mode=replace sin confirm=true, o formato de archivo inválido
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso config:write
+
 components:
   securitySchemes:
     BearerAuth:
@@ -4686,3 +4770,50 @@ components:
           type: number
           format: float
           description: Similitud coseno (0-1, mayor es más relevante)
+
+    ExportPreview:
+      type: object
+      required: [areas, devices, points, logic_scripts, test_scripts, documents, estimated_size_kb]
+      properties:
+        areas:
+          type: integer
+        devices:
+          type: integer
+        points:
+          type: integer
+        logic_scripts:
+          type: integer
+        test_scripts:
+          type: integer
+        documents:
+          type: integer
+        estimated_size_kb:
+          type: number
+          format: float
+
+    ImportResult:
+      type: object
+      required: [imported, skipped, errors]
+      properties:
+        imported:
+          type: object
+          properties:
+            areas: {type: integer}
+            devices: {type: integer}
+            points: {type: integer}
+            logic_scripts: {type: integer}
+            test_scripts: {type: integer}
+            documents: {type: integer}
+        skipped:
+          type: object
+          properties:
+            areas: {type: integer}
+            devices: {type: integer}
+            points: {type: integer}
+            logic_scripts: {type: integer}
+            test_scripts: {type: integer}
+            documents: {type: integer}
+        errors:
+          type: array
+          items:
+            type: string
