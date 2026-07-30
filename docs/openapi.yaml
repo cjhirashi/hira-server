@@ -56,6 +56,8 @@ tags:
     description: Análisis de ejecuciones de prueba e históricos de puntos — gráficas y reportes PDF.
   - name: Documentation
     description: Módulo de documentación — generación automática desde AST de scripts Python e inventario del proyecto, más documentos manuales.
+  - name: RAG
+    description: Búsqueda semántica sobre documentación indexada con pgvector — embeddings OpenAI text-embedding-3-small.
 
 paths:
   /health:
@@ -2718,6 +2720,143 @@ paths:
         "404":
           description: Script no encontrado
 
+  # ── RAG / Indexación ─────────────────────────────────────────────────────────
+
+  /v1/docs/{id}/index:
+    post:
+      operationId: index_document
+      summary: Indexar documento — generar embeddings y almacenar chunks
+      description: |
+        Divide el `content_markdown` del documento en chunks, genera embeddings
+        con OpenAI `text-embedding-3-small` y los persiste en `document_chunks`.
+        Si el documento ya tenía chunks, los elimina y reindexan (upsert limpio).
+        Requiere permiso `logic:write` (Admin).
+      tags: [Documentation, RAG]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Documento indexado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexResult"
+              example:
+                document_id: 1
+                chunks_indexed: 12
+        "404":
+          description: Documento no encontrado
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso logic:write
+
+  /v1/docs/index/all:
+    post:
+      operationId: index_all_documents
+      summary: Indexar todos los documentos sin chunks (o forzar reindexado)
+      description: |
+        Si `force=false` (default): indexa solo documentos sin ningún chunk.
+        Si `force=true`: reindexar todos los documentos.
+        Requiere permiso `logic:write` (Admin).
+      tags: [Documentation, RAG]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: force
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Resultado del proceso de indexación masiva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexAllResult"
+              example:
+                indexed: 5
+                skipped: 2
+                errors: 0
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso logic:write
+
+  /v1/docs/{id}/chunks:
+    get:
+      operationId: get_document_chunks
+      summary: Listar chunks de un documento
+      description: |
+        Retorna los chunks de texto del documento (sin el campo `embedding`).
+        Requiere permiso `logic:read` (Admin + Operador).
+      tags: [Documentation, RAG]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista de chunks del documento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentChunk"
+        "404":
+          description: Documento no encontrado
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso logic:read
+
+  /v1/rag/search:
+    post:
+      operationId: rag_search
+      summary: Búsqueda semántica en documentación indexada
+      description: |
+        Embebe la query con OpenAI y realiza búsqueda por similitud coseno
+        en `document_chunks`. Útil para debug y testing del pipeline RAG.
+        Requiere permiso `logic:read` (Admin + Operador).
+      tags: [RAG]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RAGSearchRequest"
+            example:
+              query: "temperatura AHU control"
+              top_k: 5
+      responses:
+        "200":
+          description: Lista de fragmentos relevantes con score de similitud
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RAGSearchResult"
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso logic:read
+
 components:
   securitySchemes:
     BearerAuth:
@@ -4484,3 +4623,66 @@ components:
           type: number
         period_days:
           type: integer
+
+    DocumentChunk:
+      type: object
+      required: [id, document_id, chunk_index, content]
+      properties:
+        id:
+          type: integer
+        document_id:
+          type: integer
+        chunk_index:
+          type: integer
+        content:
+          type: string
+
+    IndexResult:
+      type: object
+      required: [document_id, chunks_indexed]
+      properties:
+        document_id:
+          type: integer
+        chunks_indexed:
+          type: integer
+
+    IndexAllResult:
+      type: object
+      required: [indexed, skipped, errors]
+      properties:
+        indexed:
+          type: integer
+        skipped:
+          type: integer
+        errors:
+          type: integer
+
+    RAGSearchRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+        top_k:
+          type: integer
+          default: 5
+          minimum: 1
+          maximum: 20
+
+    RAGSearchResult:
+      type: object
+      required: [chunk_id, document_id, document_title, content, score]
+      properties:
+        chunk_id:
+          type: integer
+        document_id:
+          type: integer
+        document_title:
+          type: string
+        content:
+          type: string
+        score:
+          type: number
+          format: float
+          description: Similitud coseno (0-1, mayor es más relevante)
