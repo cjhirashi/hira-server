@@ -58,6 +58,8 @@ tags:
     description: Módulo de documentación — generación automática desde AST de scripts Python e inventario del proyecto, más documentos manuales.
   - name: RAG
     description: Búsqueda semántica sobre documentación indexada con pgvector — embeddings OpenAI text-embedding-3-small.
+  - name: Mimics
+    description: Editor visual de esquemas P&ID (mimics HVAC) basado en React Flow. Modo editor para Admin/Studio, modo visor en tiempo real para Operadores.
 
 paths:
   /health:
@@ -2897,6 +2899,118 @@ paths:
         "403":
           description: Sin permiso config:write
 
+  /api/v1/mimics:
+    get:
+      operationId: list_mimics
+      summary: Lista todos los mimics del proyecto
+      tags: [Mimics]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de mimics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MimicResponse'
+        "401":
+          description: No autenticado
+
+    post:
+      operationId: create_mimic
+      summary: Crea un nuevo mimic
+      tags: [Mimics]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MimicCreate'
+      responses:
+        "201":
+          description: Mimic creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MimicResponse'
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso devices:write
+
+  /api/v1/mimics/{mimic_id}:
+    get:
+      operationId: get_mimic
+      summary: Obtiene un mimic por ID
+      tags: [Mimics]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: mimic_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Mimic encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MimicResponse'
+        "404":
+          description: Mimic no encontrado
+
+    put:
+      operationId: update_mimic
+      summary: Actualiza un mimic (nombre y canvas React Flow)
+      tags: [Mimics]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: mimic_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MimicUpdate'
+      responses:
+        "200":
+          description: Mimic actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MimicResponse'
+        "404":
+          description: Mimic no encontrado
+
+    delete:
+      operationId: delete_mimic
+      summary: Elimina un mimic
+      tags: [Mimics]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: mimic_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Mimic eliminado
+        "404":
+          description: Mimic no encontrado
+
   /api/v1/project/import:
     post:
       summary: Importa un archivo .hira al proyecto actual
@@ -4884,6 +4998,54 @@ components:
         estimated_size_kb:
           type: number
           format: float
+
+    MimicCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        canvas:
+          type: object
+          nullable: true
+          description: "Estado completo de React Flow: {nodes: [...], edges: [...]}"
+
+    MimicUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        canvas:
+          type: object
+          nullable: true
+          description: "Estado completo de React Flow: {nodes: [...], edges: [...]}"
+
+    MimicResponse:
+      type: object
+      required: [id, name, canvas, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        canvas:
+          type: object
+          nullable: true
+          description: "Estado completo de React Flow: {nodes: [...], edges: [...]}"
+        updated_at:
+          type: string
+          format: date-time
 
     ImportResult:
       type: object
