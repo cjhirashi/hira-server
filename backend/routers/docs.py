@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from core.rbac import require_permission
 from core.logger import get_logger
 import services.doc_service as doc_service
+import services.rag_service as rag_service
 
 logger = get_logger(__name__)
 
@@ -96,3 +97,85 @@ async def preview_mermaid(
         return {"mermaid": mermaid}
     except KeyError:
         raise HTTPException(status_code=404, detail="Script no encontrado")
+
+
+# ── RAG / Indexación ──────────────────────────────────────────────────────────
+
+@router.post("/index/all")
+async def index_all_documents(
+    force: bool = Query(False),
+    user=Depends(require_permission("logic:write")),
+):
+    def _run():
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        from core.config import settings
+        engine = create_engine(settings.sync_database_url, pool_pre_ping=True)
+        with Session(engine) as session:
+            return rag_service.index_all_documents(force, session)
+        engine.dispose()
+
+    try:
+        return await asyncio.to_thread(_run)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@router.post("/{doc_id}/index")
+async def index_document(
+    doc_id: int,
+    user=Depends(require_permission("logic:write")),
+):
+    def _run():
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        from core.config import settings
+        engine = create_engine(settings.sync_database_url, pool_pre_ping=True)
+        with Session(engine) as session:
+            return rag_service.index_document(doc_id, session)
+        engine.dispose()
+
+    try:
+        return await asyncio.to_thread(_run)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@router.get("/{doc_id}/chunks")
+async def get_document_chunks(
+    doc_id: int,
+    user=Depends(require_permission("logic:read")),
+):
+    def _run():
+        from sqlalchemy import create_engine, text
+        from core.config import settings
+        engine = create_engine(settings.sync_database_url, pool_pre_ping=True)
+        try:
+            with engine.connect() as conn:
+                doc = conn.execute(
+                    text("SELECT id FROM documents WHERE id = :id"),
+                    {"id": doc_id},
+                ).fetchone()
+                if doc is None:
+                    raise KeyError(doc_id)
+                rows = conn.execute(
+                    text(
+                        "SELECT id, document_id, chunk_index, content "
+                        "FROM document_chunks WHERE document_id = :doc_id "
+                        "ORDER BY chunk_index"
+                    ),
+                    {"doc_id": doc_id},
+                ).fetchall()
+        finally:
+            engine.dispose()
+        return [
+            {"id": r[0], "document_id": r[1], "chunk_index": r[2], "content": r[3]}
+            for r in rows
+        ]
+
+    try:
+        return await asyncio.to_thread(_run)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
