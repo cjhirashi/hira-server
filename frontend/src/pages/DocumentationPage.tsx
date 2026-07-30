@@ -16,6 +16,7 @@ interface DocSummary {
 }
 interface DocFull extends DocSummary { content_markdown: string }
 interface Script { id: number; name: string }
+interface RAGResult { chunk_id: number; document_id: number; document_title: string; content: string; score: number }
 
 // ── Mermaid renderer ──────────────────────────────────────────────────────────
 
@@ -139,6 +140,79 @@ function DocModal({ doc, onSave, onClose }: {
   )
 }
 
+// ── RAG Search Panel ─────────────────────────────────────────────────────────
+
+function RAGSearchPanel() {
+  const [query, setQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [results, setResults] = useState<RAGResult[] | null>(null)
+
+  const doSearch = async () => {
+    if (!query.trim()) return
+    setSearching(true)
+    try {
+      const r = await api.post<RAGResult[]>('/rag/search', { query: query.trim(), top_k: 5 })
+      setResults(r.data)
+    } catch {
+      setResults([])
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') doSearch()
+  }
+
+  return (
+    <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16, marginTop: 16 }}>
+      <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+        Buscar en documentación
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={handleKey}
+          placeholder="Buscar en documentación…"
+          style={{ ...inputStyle, flex: 1 }}
+        />
+        <button
+          onClick={doSearch}
+          disabled={searching || !query.trim()}
+          style={{ ...btnBase, background: 'var(--accent)', color: '#fff' }}
+        >
+          {searching ? '…' : 'Buscar'}
+        </button>
+      </div>
+
+      {results !== null && (
+        <div>
+          {results.length === 0 ? (
+            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Sin resultados para esta búsqueda.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {results.map(r => (
+                <div key={r.chunk_id} style={{ background: 'var(--bg-hover)', borderRadius: 'var(--radius-md)', padding: '10px 14px', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>{r.document_title}</span>
+                    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: 'var(--accent-subtle)', color: 'var(--accent)', fontWeight: 600 }}>
+                      {(r.score * 100).toFixed(0)}% relevante
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                    {r.content.slice(0, 400)}{r.content.length > 400 ? '…' : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function DocumentationPage({ readonly = false }: { readonly?: boolean }) {
@@ -148,13 +222,16 @@ export default function DocumentationPage({ readonly = false }: { readonly?: boo
 
   const [docs, setDocs] = useState<DocSummary[]>([])
   const [selected, setSelected] = useState<DocFull | null>(null)
+  const [selectedChunkCount, setSelectedChunkCount] = useState<number | null>(null)
   const [modal, setModal] = useState<'create' | 'edit' | null>(null)
   const [toast, setToast] = useState<string>('')
   const [generating, setGenerating] = useState<string>('')
+  const [indexing, setIndexing] = useState(false)
+  const [indexingDoc, setIndexingDoc] = useState(false)
 
   const showToast = (msg: string) => {
     setToast(msg)
-    setTimeout(() => setToast(''), 3000)
+    setTimeout(() => setToast(''), 3500)
   }
 
   const loadDocs = async () => {
@@ -165,6 +242,14 @@ export default function DocumentationPage({ readonly = false }: { readonly?: boo
   const loadDoc = async (id: number) => {
     const r = await api.get<DocFull>(`/docs/${id}`)
     setSelected(r.data)
+    setSelectedChunkCount(null)
+    // Cargar chunk count para badge
+    try {
+      const cr = await api.get<{ id: number }[]>(`/docs/${id}/chunks`)
+      setSelectedChunkCount(cr.data.length)
+    } catch {
+      setSelectedChunkCount(0)
+    }
   }
 
   useEffect(() => { loadDocs() }, [])
@@ -206,6 +291,28 @@ export default function DocumentationPage({ readonly = false }: { readonly?: boo
     finally { setGenerating('') }
   }
 
+  // ── index all
+  const handleIndexAll = async () => {
+    setIndexing(true)
+    try {
+      const r = await api.post<{ indexed: number; skipped: number; errors: number }>('/docs/index/all')
+      showToast(`Indexados: ${r.data.indexed}, omitidos: ${r.data.skipped}, errores: ${r.data.errors}`)
+    } catch { showToast('Error indexando documentos') }
+    finally { setIndexing(false) }
+  }
+
+  // ── index single doc
+  const handleIndexDoc = async () => {
+    if (!selected) return
+    setIndexingDoc(true)
+    try {
+      const r = await api.post<{ document_id: number; chunks_indexed: number }>(`/docs/${selected.id}/index`)
+      setSelectedChunkCount(r.data.chunks_indexed)
+      showToast(`Indexado: ${r.data.chunks_indexed} chunks`)
+    } catch { showToast('Error indexando documento') }
+    finally { setIndexingDoc(false) }
+  }
+
   // ── delete
   const deleteDoc = async (doc: DocFull) => {
     if (doc.type !== 'manual') {
@@ -215,6 +322,7 @@ export default function DocumentationPage({ readonly = false }: { readonly?: boo
     try {
       await api.delete(`/docs/${doc.id}`)
       setSelected(null)
+      setSelectedChunkCount(null)
       await loadDocs()
       showToast('Documento eliminado')
     } catch (e: unknown) {
@@ -229,6 +337,7 @@ export default function DocumentationPage({ readonly = false }: { readonly?: boo
       const r = await api.post<DocFull>('/docs', { title, content_markdown: content })
       await loadDocs()
       setSelected(r.data)
+      setSelectedChunkCount(0)
     } else if (selected) {
       const r = await api.put<DocFull>(`/docs/${selected.id}`, { title, content_markdown: content })
       await loadDocs()
@@ -237,6 +346,8 @@ export default function DocumentationPage({ readonly = false }: { readonly?: boo
     setModal(null)
     showToast('Documento guardado')
   }
+
+  const isIndexed = selectedChunkCount !== null && selectedChunkCount > 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 48px)', overflow: 'hidden' }}>
@@ -254,6 +365,9 @@ export default function DocumentationPage({ readonly = false }: { readonly?: boo
               </button>
               <button onClick={genAllScripts} disabled={!!generating} style={{ ...btnBase, background: 'var(--bg-hover)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>
                 {generating ? '' : '⟳ Generar scripts'}
+              </button>
+              <button onClick={handleIndexAll} disabled={indexing} style={{ ...btnBase, background: 'var(--bg-hover)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>
+                {indexing ? 'Indexando…' : '⟳ Indexar todo'}
               </button>
             </>
           )}
@@ -298,25 +412,54 @@ export default function DocumentationPage({ readonly = false }: { readonly?: boo
           {selected ? (
             <>
               {/* Doc header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'var(--accent-subtle)', color: 'var(--accent)', fontWeight: 600, textTransform: 'uppercase' }}>
                   {selected.type === 'auto_script' ? 'Script' : selected.type === 'auto_inventory' ? 'Inventario' : 'Manual'}
                 </span>
+                {/* Badge de indexación */}
+                {selectedChunkCount !== null && (
+                  <span style={{
+                    fontSize: 10,
+                    padding: '2px 8px',
+                    borderRadius: 10,
+                    background: isIndexed ? 'rgba(34,197,94,0.15)' : 'var(--bg-hover)',
+                    color: isIndexed ? 'var(--hira-status-ok)' : 'var(--text-muted)',
+                    fontWeight: 600,
+                    border: `1px solid ${isIndexed ? 'var(--hira-status-ok)' : 'var(--border-default)'}`,
+                  }}>
+                    {isIndexed ? `✓ Indexado (${selectedChunkCount} chunks)` : 'Sin indexar'}
+                  </span>
+                )}
                 <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
                   Actualizado: {new Date(selected.updated_at).toLocaleString()}
                 </span>
-                {canEdit && selected.type === 'manual' && (
+                {canEdit && (
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                    <button onClick={() => setModal('edit')} style={{ ...btnBase, background: 'var(--bg-hover)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>Editar</button>
-                    <button onClick={() => deleteDoc(selected)} style={{ ...btnBase, background: 'var(--danger-subtle)', border: '1px solid var(--danger)', color: 'var(--danger)' }}>Eliminar</button>
+                    <button
+                      onClick={handleIndexDoc}
+                      disabled={indexingDoc}
+                      style={{ ...btnBase, background: 'var(--bg-hover)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                    >
+                      {indexingDoc ? 'Indexando…' : '⟳ Indexar'}
+                    </button>
+                    {selected.type === 'manual' && (
+                      <>
+                        <button onClick={() => setModal('edit')} style={{ ...btnBase, background: 'var(--bg-hover)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>Editar</button>
+                        <button onClick={() => deleteDoc(selected)} style={{ ...btnBase, background: 'var(--danger-subtle)', border: '1px solid var(--danger)', color: 'var(--danger)' }}>Eliminar</button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
               <DocViewer content={selected.content_markdown} />
+              <RAGSearchPanel />
             </>
           ) : (
-            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-              Selecciona un documento de la lista
+            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 24, paddingTop: 32 }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', textAlign: 'center' }}>
+                Selecciona un documento de la lista
+              </div>
+              <RAGSearchPanel />
             </div>
           )}
         </div>
