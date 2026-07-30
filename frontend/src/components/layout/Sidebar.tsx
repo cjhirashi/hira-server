@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Bell, BarChart2, BarChart3, Settings,
-  Code2, Sparkles, LogOut, Zap, Wrench, Activity, FlaskConical, type LucideIcon,
+  Code2, Sparkles, LogOut, Zap, Wrench, Activity, FlaskConical, BookOpen, FileText, type LucideIcon,
 } from 'lucide-react'
 import { useAlarmsStore } from '../../store/alarmsStore'
 import { useAuthStore } from '../../store/authStore'
@@ -191,6 +191,9 @@ export default function Sidebar() {
         <NavItem to="/history" label="Históricos" Icon={BarChart2} />
         <NavItem to="/analysis" label="Análisis" Icon={BarChart3} />
         {operadorOrAdmin && (
+          <NavItem to="/manual" label="Manual" Icon={FileText} />
+        )}
+        {operadorOrAdmin && (
           <NavItem to="/ai/cliente" label="AI Asistente" Icon={Sparkles} />
         )}
         {operadorOrAdmin && (
@@ -207,6 +210,7 @@ export default function Sidebar() {
             <NavItem to="/ai/integrador" label="AI Integrador" Icon={Sparkles} />
             <NavItem to="/studio/notifications" label="Notificaciones" Icon={Bell} />
             <NavItem to="/tests" label="Pruebas" Icon={FlaskConical} />
+            <NavItem to="/docs" label="Documentación" Icon={BookOpen} />
           </>
         )}
       </div>
