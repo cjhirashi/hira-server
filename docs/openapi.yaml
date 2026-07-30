@@ -650,12 +650,13 @@ paths:
   /devices/scan:
     post:
       operationId: scan_devices
-      summary: Escanear red en busca de dispositivos
+      summary: Escaneo automático de dispositivos en red
       description: |
         Dispara un escaneo de red según el protocolo indicado.
-        BACnet → Who-Is broadcast. MQTT → suscripción wildcard `#` durante N segundos.
-        Los dispositivos descubiertos se registran automáticamente en la BD.
-        Requiere `devices:write`.
+        BACnet → Who-Is broadcast. Modbus TCP → scan de rango IP por puerto 502.
+        MQTT → suscripción wildcard `#` durante N segundos.
+        Retorna candidatos — no los registra automáticamente en la BD.
+        Requiere `config:write` (Admin).
       tags:
         - Devices
       security:
@@ -665,31 +666,17 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - protocol
-              properties:
-                protocol:
-                  type: string
-                  enum: [bacnet, mqtt]
-                  description: Protocolo a escanear
-                  example: bacnet
-                timeout_s:
-                  type: integer
-                  minimum: 1
-                  maximum: 30
-                  default: 5
-                  description: Segundos de espera para respuestas
+              $ref: "#/components/schemas/ScanRequest"
       responses:
         "200":
-          description: Resultado del escaneo
+          description: Resultado del escaneo con lista de candidatos descubiertos
           headers:
             X-Trace-ID:
               $ref: "#/components/headers/XTraceID"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DeviceScanResult"
+                $ref: "#/components/schemas/ScanResponse"
         "401":
           description: No autenticado
           headers:
@@ -701,6 +688,15 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: Sin permiso suficiente
+          headers:
+            X-Trace-ID:
+              $ref: "#/components/headers/XTraceID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validación fallida — protocolo inválido u opciones incorrectas
           headers:
             X-Trace-ID:
               $ref: "#/components/headers/XTraceID"
@@ -3346,20 +3342,67 @@ components:
           nullable: true
           example: 9600
 
-    DeviceScanResult:
+    ScanRequest:
       type: object
       required:
-        - discovered
-        - scan_duration_ms
+        - protocol
       properties:
-        discovered:
+        protocol:
+          type: string
+          enum: [bacnet, modbus, mqtt]
+          description: Protocolo a escanear
+          example: modbus
+        options:
+          type: object
+          description: |
+            Opciones específicas por protocolo.
+            BACnet: `{timeout_seconds: 5}`
+            Modbus: `{ip_range: "192.168.1.1-254", port: 502, timeout_per_host: 1}`
+            MQTT: `{duration_seconds: 10}`
+          example: {"ip_range": "192.168.1.1-10", "port": 502}
+
+    ScanCandidate:
+      type: object
+      required:
+        - protocol
+        - metadata
+      properties:
+        protocol:
+          type: string
+          example: modbus
+        address:
+          type: string
+          nullable: true
+          description: IP o IP:puerto del candidato descubierto
+          example: "192.168.1.50:502"
+        name:
+          type: string
+          nullable: true
+          description: Nombre del dispositivo si el protocolo lo expone (BACnet)
+          example: "AHU-01"
+        metadata:
+          type: object
+          description: Metadatos adicionales del candidato
+          example: {"unit_ids_responding": [1, 2]}
+
+    ScanResponse:
+      type: object
+      required:
+        - protocol
+        - duration_seconds
+        - candidates
+      properties:
+        protocol:
+          type: string
+          example: modbus
+        duration_seconds:
+          type: number
+          description: Duración real del escaneo en segundos
+          example: 3.21
+        candidates:
           type: array
           items:
-            $ref: "#/components/schemas/DeviceResponse"
-        scan_duration_ms:
-          type: integer
-          description: Duración total del escaneo en milisegundos
-          example: 3200
+            $ref: "#/components/schemas/ScanCandidate"
 
     # ── Points ────────────────────────────────────────────────────────────────
 

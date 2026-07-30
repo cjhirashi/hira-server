@@ -46,6 +46,19 @@ class DeviceResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class DeviceScanResult(BaseModel):
-    discovered: list[DeviceResponse]
-    scan_duration_ms: int
+class ScanRequest(BaseModel):
+    protocol: str = Field(pattern=r"^(bacnet|modbus|mqtt)$")
+    options: dict[str, Any] = Field(default_factory=dict)
+
+
+class ScanCandidate(BaseModel):
+    protocol: str
+    address: str | None = None
+    name: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ScanResponse(BaseModel):
+    protocol: str
+    duration_seconds: float
+    candidates: list[ScanCandidate]
