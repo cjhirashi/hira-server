@@ -40,6 +40,7 @@ class Settings(BaseSettings):
 
     # ── AI ────────────────────────────────────────────────────────────────
     ai_encryption_key: str = Field(default="", description="Clave Fernet para el agente AI")
+    openai_api_key: str = Field(default="", description="API key de OpenAI para embeddings RAG")
 
     # ── Hub ───────────────────────────────────────────────────────────────
     hub_api_url: str = Field(default="")
