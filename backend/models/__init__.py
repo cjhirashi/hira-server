@@ -14,6 +14,7 @@ from models.script_executions import ScriptExecution
 from models.mimics import Mimic
 from models.notifications import Notification
 from models.engineering_sessions import EngineeringSession
+from models.documents import Document, DocumentChunk
 
 __all__ = [
     "Base",
@@ -32,4 +33,6 @@ __all__ = [
     "Mimic",
     "Notification",
     "EngineeringSession",
+    "Document",
+    "DocumentChunk",
 ]
