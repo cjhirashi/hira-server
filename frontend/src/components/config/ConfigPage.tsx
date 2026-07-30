@@ -5,8 +5,9 @@ import { DevicesTab } from './DevicesTab'
 import { PointsTab } from './PointsTab'
 import { UsersTab } from './UsersTab'
 import { AIConfigForm } from '../ai/AIConfigForm'
+import { SistemaTab } from './SistemaTab'
 
-type Tab = 'areas' | 'devices' | 'points' | 'users' | 'ia'
+type Tab = 'areas' | 'devices' | 'points' | 'users' | 'ia' | 'sistema'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'areas', label: 'Áreas' },
@@ -14,6 +15,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'points', label: 'Puntos' },
   { id: 'users', label: 'Usuarios' },
   { id: 'ia', label: 'IA' },
+  { id: 'sistema', label: 'Sistema' },
 ]
 
 function tabFromPath(pathname: string): Tab {
@@ -21,6 +23,7 @@ function tabFromPath(pathname: string): Tab {
   if (pathname.includes('/points')) return 'points'
   if (pathname.includes('/users')) return 'users'
   if (pathname.includes('/ia')) return 'ia'
+  if (pathname.includes('/sistema')) return 'sistema'
   return 'areas'
 }
 
@@ -69,6 +72,7 @@ export default function ConfigPage() {
       {tab === 'points' && <PointsTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'ia' && <AIConfigForm />}
+      {tab === 'sistema' && <SistemaTab />}
     </div>
   )
 }
