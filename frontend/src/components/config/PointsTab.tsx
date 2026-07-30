@@ -17,6 +17,8 @@ interface Point {
   history_interval_seconds: number
   area_id: number | null
   area_name: string | null
+  modbus_register_type: string | null
+  modbus_data_type: string | null
 }
 
 interface PointForm {
@@ -30,11 +32,14 @@ interface PointForm {
   log_enabled: boolean
   history_interval_seconds: string
   area_id: string
+  modbus_register_type: string
+  modbus_data_type: string
 }
 
 const emptyForm: PointForm = {
   device_id: '', name: '', description: '', object_type: '', address: '',
   unit: '', writable: false, log_enabled: false, history_interval_seconds: '60', area_id: '',
+  modbus_register_type: 'holding_register', modbus_data_type: 'uint16',
 }
 
 export function PointsTab() {
@@ -45,6 +50,7 @@ export function PointsTab() {
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
+  const [editDeviceProtocol, setEditDeviceProtocol] = useState<string>('')
   const [form, setForm] = useState<PointForm>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [deviceFilter, setDeviceFilter] = useState<string>('')
@@ -81,9 +87,14 @@ export function PointsTab() {
 
   useEffect(() => { loadAll() }, [])
 
-  const openCreate = () => { setEditId(null); setForm(emptyForm); setError(null); setShowForm(true) }
+  const selectedDeviceProtocol = (deviceId: string) =>
+    devices.find(d => d.id.toString() === deviceId)?.protocol ?? ''
+
+  const openCreate = () => { setEditId(null); setEditDeviceProtocol(''); setForm(emptyForm); setError(null); setShowForm(true) }
   const openEdit = (p: Point) => {
+    const proto = devices.find(d => d.id === p.device_id)?.protocol ?? ''
     setEditId(p.id)
+    setEditDeviceProtocol(proto)
     setForm({
       device_id: p.device_id.toString(),
       name: p.name, description: p.description,
@@ -91,31 +102,43 @@ export function PointsTab() {
       writable: p.writable, log_enabled: p.log_enabled,
       history_interval_seconds: p.history_interval_seconds.toString(),
       area_id: p.area_id?.toString() ?? '',
+      modbus_register_type: p.modbus_register_type ?? 'holding_register',
+      modbus_data_type: p.modbus_data_type ?? 'uint16',
     })
     setError(null)
     setShowForm(true)
   }
   const close = () => { setShowForm(false); setError(null) }
 
+  const currentProtocol = editId !== null
+    ? editDeviceProtocol
+    : selectedDeviceProtocol(form.device_id)
+  const isModbus = currentProtocol === 'modbus'
+
   const save = async () => {
     setSaving(true)
-    const payload = {
-      device_id: parseInt(form.device_id),
+    const base = {
       name: form.name, description: form.description,
-      object_type: form.object_type, address: form.address, unit: form.unit,
-      writable: form.writable, log_enabled: form.log_enabled,
+      unit: form.unit, writable: form.writable, log_enabled: form.log_enabled,
       history_interval_seconds: parseInt(form.history_interval_seconds) || 60,
       area_id: form.area_id ? parseInt(form.area_id) : null,
     }
+    const modbusFields = isModbus ? {
+      modbus_register_type: form.modbus_register_type || null,
+      modbus_data_type: form.modbus_data_type || null,
+    } : {}
+
     try {
       if (editId === null) {
-        await api.post('/points', payload)
-      } else {
-        await api.put(`/points/${editId}`, {
-          name: payload.name, description: payload.description,
-          unit: payload.unit, writable: payload.writable, log_enabled: payload.log_enabled,
-          history_interval_seconds: payload.history_interval_seconds, area_id: payload.area_id,
+        await api.post('/points', {
+          ...base,
+          ...modbusFields,
+          device_id: parseInt(form.device_id),
+          object_type: form.object_type,
+          address: form.address,
         })
+      } else {
+        await api.put(`/points/${editId}`, { ...base, ...modbusFields })
       }
       close()
       loadAll()
@@ -142,6 +165,9 @@ export function PointsTab() {
     : points
 
   const deviceName = (id: number) => devices.find(d => d.id === id)?.name ?? `#${id}`
+
+  const addressLabel = isModbus ? 'Dirección de Registro *' : 'Dirección *'
+  const addressPlaceholder = isModbus ? '0, 1, 100, ...' : 'AI:0, 400001, ...'
 
   return (
     <div>
@@ -216,11 +242,55 @@ export function PointsTab() {
 
             {editId === null && (
               <>
-                <label style={labelStyle}>Tipo de objeto *</label>
-                <input style={inputStyle} value={form.object_type} onChange={e => setForm(f => ({ ...f, object_type: e.target.value }))} placeholder="analogInput, binaryOutput, ..." />
+                {!isModbus && (
+                  <>
+                    <label style={labelStyle}>Tipo de objeto *</label>
+                    <input style={inputStyle} value={form.object_type} onChange={e => setForm(f => ({ ...f, object_type: e.target.value }))} placeholder="analogInput, binaryOutput, ..." />
+                  </>
+                )}
 
-                <label style={labelStyle}>Dirección *</label>
-                <input style={inputStyle} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="AI:0, 400001, ..." />
+                <label style={labelStyle}>{addressLabel}</label>
+                <input style={inputStyle} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder={addressPlaceholder} />
+
+                {isModbus && (
+                  <>
+                    <label style={labelStyle}>Tipo de Registro *</label>
+                    <select style={inputStyle} value={form.modbus_register_type} onChange={e => setForm(f => ({ ...f, modbus_register_type: e.target.value }))}>
+                      <option value="holding_register">Holding Register (FC03/FC06)</option>
+                      <option value="input_register">Input Register (FC04, solo lectura)</option>
+                      <option value="coil">Coil (FC01/FC05)</option>
+                      <option value="discrete_input">Discrete Input (FC02, solo lectura)</option>
+                    </select>
+
+                    <label style={labelStyle}>Tipo de Dato *</label>
+                    <select style={inputStyle} value={form.modbus_data_type} onChange={e => setForm(f => ({ ...f, modbus_data_type: e.target.value }))}>
+                      <option value="uint16">uint16 (entero sin signo)</option>
+                      <option value="int16">int16 (entero con signo)</option>
+                      <option value="float32">float32 (IEEE 754, 2 registros)</option>
+                      <option value="bool">bool</option>
+                    </select>
+                  </>
+                )}
+              </>
+            )}
+
+            {editId !== null && isModbus && (
+              <>
+                <label style={labelStyle}>Tipo de Registro</label>
+                <select style={inputStyle} value={form.modbus_register_type} onChange={e => setForm(f => ({ ...f, modbus_register_type: e.target.value }))}>
+                  <option value="holding_register">Holding Register (FC03/FC06)</option>
+                  <option value="input_register">Input Register (FC04, solo lectura)</option>
+                  <option value="coil">Coil (FC01/FC05)</option>
+                  <option value="discrete_input">Discrete Input (FC02, solo lectura)</option>
+                </select>
+
+                <label style={labelStyle}>Tipo de Dato</label>
+                <select style={inputStyle} value={form.modbus_data_type} onChange={e => setForm(f => ({ ...f, modbus_data_type: e.target.value }))}>
+                  <option value="uint16">uint16 (entero sin signo)</option>
+                  <option value="int16">int16 (entero con signo)</option>
+                  <option value="float32">float32 (IEEE 754, 2 registros)</option>
+                  <option value="bool">bool</option>
+                </select>
               </>
             )}
 
@@ -249,7 +319,11 @@ export function PointsTab() {
 
             <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
               <button onClick={close} style={smallBtnStyle}>Cancelar</button>
-              <button onClick={save} disabled={saving || !form.name.trim() || (editId === null && (!form.device_id || !form.object_type.trim() || !form.address.trim()))} style={btnStyle}>
+              <button
+                onClick={save}
+                disabled={saving || !form.name.trim() || (editId === null && (!form.device_id || (!isModbus && !form.object_type.trim()) || !form.address.trim()))}
+                style={btnStyle}
+              >
                 {saving ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
