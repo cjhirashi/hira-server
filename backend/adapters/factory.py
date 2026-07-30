@@ -48,9 +48,9 @@ def get_protocol_adapter(protocol: str):
         return MQTTAdapter()
 
     if p == "modbus":
-        raise NotImplementedError(
-            "Modbus directo reservado — usar SimuladorModbus para desarrollo"
-        )
+        from adapters.protocol.modbus_adapter import ModbusAdapter
+        logger.info("Factory: usando ModbusAdapter")
+        return ModbusAdapter
 
     raise ValueError(
         f"Protocolo '{protocol}' no reconocido. Valores válidos: 'bacnet', 'mqtt', 'modbus'"

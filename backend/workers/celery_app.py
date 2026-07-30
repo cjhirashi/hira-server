@@ -14,6 +14,7 @@ celery_app = Celery(
         "workers.logic_worker",
         "workers.monitor_worker",
         "workers.test_worker",
+        "workers.modbus_poller",
     ],
 )
 
@@ -27,6 +28,7 @@ celery_app.conf.update(
     task_routes={
         "workers.bacnet_poller.*": {"queue": "protocols"},
         "workers.mqtt_listener.*": {"queue": "protocols"},
+        "workers.modbus_poller.*": {"queue": "protocols"},
         "workers.simulator_runner.*": {"queue": "simulators"},
         "workers.alarm_worker.*": {"queue": "normal"},
         "workers.logic_worker.*": {"queue": "normal"},
@@ -42,6 +44,11 @@ celery_app.conf.update(
             "task": "workers.monitor_worker.monitor_system",
             "schedule": 60.0,
             "options": {"queue": "normal"},
+        },
+        "poll-modbus-devices": {
+            "task": "workers.modbus_poller.poll_all_modbus_devices",
+            "schedule": 10.0,
+            "options": {"queue": "protocols"},
         },
     },
 )
