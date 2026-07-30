@@ -30,6 +30,7 @@ from routers.analysis import router as analysis_router
 from routers.docs import router as docs_router
 from routers.rag import router as rag_router
 from routers.mimics import router as mimics_router
+from routers.project import router as project_router
 from routers.ws import router as ws_router
 from websocket.redis_subscriber import start_subscriber, stop_subscriber
 
@@ -241,6 +242,7 @@ app.include_router(analysis_router, prefix="/api/v1")
 app.include_router(docs_router, prefix="/api/v1")
 app.include_router(rag_router, prefix="/api/v1")
 app.include_router(mimics_router, prefix="/api/v1")
+app.include_router(project_router, prefix="/api/v1")
 app.include_router(ws_router)
 
 
