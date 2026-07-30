@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../services/api'
+import { useAuthStore } from '../../store/authStore'
 
 interface Device {
   id: number
@@ -28,12 +29,36 @@ interface DeviceForm {
   modbus_baudrate: string
 }
 
+interface ScanCandidate {
+  protocol: string
+  address: string | null
+  name: string | null
+  metadata: Record<string, unknown>
+}
+
+interface ScanOptions {
+  timeout_seconds: string
+  ip_range: string
+  port: string
+  timeout_per_host: string
+  duration_seconds: string
+}
+
 const emptyForm: DeviceForm = {
   name: '', protocol: 'bacnet', address: '', port: '', area: '', auto_start: false,
   modbus_unit_id: '1', modbus_transport: 'tcp', modbus_baudrate: '9600',
 }
 
+const emptyScanOptions: ScanOptions = {
+  timeout_seconds: '5',
+  ip_range: '192.168.1.1-254',
+  port: '502',
+  timeout_per_host: '1',
+  duration_seconds: '10',
+}
+
 export function DevicesTab() {
+  const isAdmin = useAuthStore(s => s.isAdmin())
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -42,6 +67,14 @@ export function DevicesTab() {
   const [editProtocol, setEditProtocol] = useState<string>('bacnet')
   const [form, setForm] = useState<DeviceForm>(emptyForm)
   const [saving, setSaving] = useState(false)
+
+  // Scan modal state
+  const [showScan, setShowScan] = useState(false)
+  const [scanProtocol, setScanProtocol] = useState<string>('bacnet')
+  const [scanOptions, setScanOptions] = useState<ScanOptions>(emptyScanOptions)
+  const [scanning, setScanning] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [scanCandidates, setScanCandidates] = useState<ScanCandidate[] | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -118,6 +151,64 @@ export function DevicesTab() {
     }
   }
 
+  // Scan modal
+  const openScan = () => {
+    setScanProtocol('bacnet')
+    setScanOptions(emptyScanOptions)
+    setScanError(null)
+    setScanCandidates(null)
+    setScanning(false)
+    setShowScan(true)
+  }
+  const closeScan = () => setShowScan(false)
+
+  const runScan = async () => {
+    setScanning(true)
+    setScanError(null)
+    setScanCandidates(null)
+    const options: Record<string, unknown> = {}
+    if (scanProtocol === 'bacnet') {
+      options.timeout_seconds = parseInt(scanOptions.timeout_seconds) || 5
+    } else if (scanProtocol === 'modbus') {
+      options.ip_range = scanOptions.ip_range
+      options.port = parseInt(scanOptions.port) || 502
+      options.timeout_per_host = parseFloat(scanOptions.timeout_per_host) || 1.0
+    } else {
+      options.duration_seconds = parseInt(scanOptions.duration_seconds) || 10
+    }
+    try {
+      const res = await api.post<{ protocol: string; duration_seconds: number; candidates: ScanCandidate[] }>(
+        '/devices/scan',
+        { protocol: scanProtocol, options }
+      )
+      setScanCandidates(res.data.candidates)
+    } catch (e: unknown) {
+      setScanError((e as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? 'Error al escanear')
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  const addCandidate = (c: ScanCandidate) => {
+    setShowScan(false)
+    setEditId(null)
+    setEditProtocol(c.protocol)
+    setError(null)
+    const address = c.address ?? ''
+    const isModbusCandidate = c.protocol === 'modbus'
+    setForm({
+      ...emptyForm,
+      name: c.name ?? '',
+      protocol: c.protocol,
+      address: isModbusCandidate ? address.split(':')[0] : address,
+      port: isModbusCandidate && address.includes(':') ? address.split(':')[1] : '',
+      modbus_unit_id: '1',
+      modbus_transport: 'tcp',
+      modbus_baudrate: '9600',
+    })
+    setShowForm(true)
+  }
+
   const statusColor = (s: string) => {
     if (s === 'online') return 'var(--hira-status-ok)'
     if (s === 'offline') return 'var(--hira-status-offline)'
@@ -132,11 +223,22 @@ export function DevicesTab() {
     ? (isRtu ? '/dev/ttyUSB0' : '192.168.1.100:502')
     : '192.168.1.100'
 
+  const scanTimeoutLabel = scanProtocol === 'bacnet'
+    ? `~${scanOptions.timeout_seconds}s`
+    : scanProtocol === 'mqtt'
+      ? `~${scanOptions.duration_seconds}s`
+      : `hasta ${Math.ceil(parseInt(scanOptions.timeout_per_host || '1') * 254)}s máx`
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h3 style={{ margin: 0 }}>Dispositivos</h3>
-        <button onClick={openCreate} style={btnStyle}>+ Nuevo dispositivo</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isAdmin && (
+            <button onClick={openScan} style={secondaryBtnStyle}>⟳ Escanear dispositivos</button>
+          )}
+          <button onClick={openCreate} style={btnStyle}>+ Nuevo dispositivo</button>
+        </div>
       </div>
 
       {error && !showForm && <p style={{ color: 'var(--hira-alarm-critical)' }}>{error}</p>}
@@ -174,6 +276,121 @@ export function DevicesTab() {
         </table>
       )}
 
+      {/* Scan modal */}
+      {showScan && (
+        <div style={overlayStyle}>
+          <div style={{ ...dialogStyle, minWidth: 480, maxWidth: 600 }}>
+            <h4 style={{ margin: '0 0 16px' }}>Escanear dispositivos en red</h4>
+            {scanError && <p style={{ color: 'var(--hira-alarm-critical)', marginTop: 0 }}>{scanError}</p>}
+
+            {scanCandidates === null && !scanning && (
+              <>
+                <label style={labelStyle}>Protocolo</label>
+                <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                  {(['bacnet', 'modbus', 'mqtt'] as const).map(p => (
+                    <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
+                      <input type="radio" name="scan-proto" value={p} checked={scanProtocol === p} onChange={() => setScanProtocol(p)} />
+                      {p === 'bacnet' ? 'BACnet' : p === 'modbus' ? 'Modbus TCP' : 'MQTT'}
+                    </label>
+                  ))}
+                </div>
+
+                {scanProtocol === 'bacnet' && (
+                  <>
+                    <label style={labelStyle}>Timeout (segundos)</label>
+                    <input style={inputStyle} type="number" min="1" max="30" value={scanOptions.timeout_seconds}
+                      onChange={e => setScanOptions(o => ({ ...o, timeout_seconds: e.target.value }))} />
+                  </>
+                )}
+
+                {scanProtocol === 'modbus' && (
+                  <>
+                    <label style={labelStyle}>Rango IP</label>
+                    <input style={inputStyle} value={scanOptions.ip_range}
+                      onChange={e => setScanOptions(o => ({ ...o, ip_range: e.target.value }))}
+                      placeholder="192.168.1.1-254" />
+                    <label style={labelStyle}>Puerto</label>
+                    <input style={inputStyle} type="number" value={scanOptions.port}
+                      onChange={e => setScanOptions(o => ({ ...o, port: e.target.value }))} />
+                    <label style={labelStyle}>Timeout por host (segundos)</label>
+                    <input style={inputStyle} type="number" step="0.1" min="0.1" value={scanOptions.timeout_per_host}
+                      onChange={e => setScanOptions(o => ({ ...o, timeout_per_host: e.target.value }))} />
+                  </>
+                )}
+
+                {scanProtocol === 'mqtt' && (
+                  <>
+                    <label style={labelStyle}>Duración del scan (segundos)</label>
+                    <input style={inputStyle} type="number" min="1" max="60" value={scanOptions.duration_seconds}
+                      onChange={e => setScanOptions(o => ({ ...o, duration_seconds: e.target.value }))} />
+                    <p style={{ fontSize: 12, color: 'var(--md-sys-color-on-surface-variant, #aaa)', margin: '-4px 0 12px' }}>
+                      Usa el broker MQTT configurado en el sistema
+                    </p>
+                  </>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                  <button onClick={closeScan} style={smallBtnStyle}>Cancelar</button>
+                  <button onClick={runScan} style={btnStyle}>Iniciar scan ({scanTimeoutLabel})</button>
+                </div>
+              </>
+            )}
+
+            {scanning && (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>⟳</div>
+                <p style={{ margin: 0 }}>Escaneando red...</p>
+                <p style={{ fontSize: 13, color: 'var(--md-sys-color-on-surface-variant, #aaa)', marginTop: 4 }}>
+                  Puede tardar hasta {scanProtocol === 'mqtt' ? scanOptions.duration_seconds : scanProtocol === 'bacnet' ? scanOptions.timeout_seconds : Math.ceil(parseFloat(scanOptions.timeout_per_host || '1') * 254)}s
+                </p>
+              </div>
+            )}
+
+            {scanCandidates !== null && !scanning && (
+              <>
+                <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--md-sys-color-on-surface-variant, #aaa)' }}>
+                  {scanCandidates.length > 0
+                    ? `${scanCandidates.length} dispositivo(s) encontrado(s)`
+                    : 'No se encontraron dispositivos en la red.'}
+                </p>
+
+                {scanCandidates.length > 0 && (
+                  <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr>
+                          {['Protocolo', 'Dirección', 'Nombre', 'Acción'].map(h => (
+                            <th key={h} style={thStyle}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scanCandidates.map((c, i) => (
+                          <tr key={i}>
+                            <td style={tdStyle}>{c.protocol}</td>
+                            <td style={tdStyle}>{c.address ?? (c.metadata?.topic as string) ?? '—'}</td>
+                            <td style={tdStyle}>{c.name ?? '—'}</td>
+                            <td style={tdStyle}>
+                              <button onClick={() => addCandidate(c)} style={smallBtnStyle}>Agregar</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={closeScan} style={smallBtnStyle}>Cerrar</button>
+                  <button onClick={() => { setScanCandidates(null); setScanError(null) }} style={secondaryBtnStyle}>Nuevo scan</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Device form modal */}
       {showForm && (
         <div style={overlayStyle}>
           <div style={dialogStyle}>
@@ -257,6 +474,7 @@ const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collap
 const thStyle: React.CSSProperties = { textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid var(--md-sys-color-outline-variant, #333)', fontWeight: 600, fontSize: 13 }
 const tdStyle: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--md-sys-color-outline-variant, #2a2a3a)', fontSize: 14 }
 const btnStyle: React.CSSProperties = { background: 'var(--md-sys-color-primary, #00b4d8)', color: 'var(--md-sys-color-on-primary, #fff)', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontWeight: 600 }
+const secondaryBtnStyle: React.CSSProperties = { background: 'transparent', border: '1px solid var(--md-sys-color-primary, #00b4d8)', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', color: 'var(--md-sys-color-primary, #00b4d8)', fontWeight: 600 }
 const smallBtnStyle: React.CSSProperties = { background: 'transparent', border: '1px solid var(--md-sys-color-outline, #444)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: 'var(--md-sys-color-on-surface, #e0e0e0)', fontSize: 13 }
 const overlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
 const dialogStyle: React.CSSProperties = { background: 'var(--md-sys-color-surface, #1e1e2e)', borderRadius: 12, padding: 24, minWidth: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.4)', maxHeight: '90vh', overflowY: 'auto' }
