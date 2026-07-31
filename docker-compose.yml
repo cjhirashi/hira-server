@@ -8,6 +8,8 @@ services:
     env_file: .env
     environment:
       - HIRA_DEPLOY_MODE=${HIRA_DEPLOY_MODE:-server}
+    volumes:
+      - backups_data:/backups
     depends_on:
       postgres:
         condition: service_healthy
@@ -253,6 +255,7 @@ volumes:
   redis_data:
   mosquitto_data:
   grafana_data:
+  backups_data:
 
 networks:
   hira-network:

@@ -1,5 +1,6 @@
 """Instancia Celery compartida para todos los workers de Hira."""
 from celery import Celery
+from celery.schedules import crontab
 from core.config import settings
 
 celery_app = Celery(
@@ -16,6 +17,7 @@ celery_app = Celery(
         "workers.test_worker",
         "workers.modbus_poller",
         "workers.engineering_session_tasks",
+        "workers.backup_tasks",
     ],
 )
 
@@ -54,6 +56,11 @@ celery_app.conf.update(
         "expire-engineering-sessions": {
             "task": "workers.engineering_session_tasks.expire_engineering_sessions",
             "schedule": 30.0,
+            "options": {"queue": "normal"},
+        },
+        "daily-database-backup": {
+            "task": "workers.backup_tasks.run_database_backup",
+            "schedule": crontab(hour=3, minute=0),
             "options": {"queue": "normal"},
         },
     },
