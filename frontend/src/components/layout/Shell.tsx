@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import EngineeringSessionBanner from '../EngineeringSessionBanner'
 
 export default function Shell() {
   return (
@@ -13,6 +14,7 @@ export default function Shell() {
         display: 'flex',
         flexDirection: 'column',
       }}>
+        <EngineeringSessionBanner />
         <div style={{ flex: 1, padding: '24px 28px' }}>
           <Outlet />
         </div>
