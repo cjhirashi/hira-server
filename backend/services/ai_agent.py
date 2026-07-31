@@ -5,6 +5,7 @@ Usa bind_tools() + loop manual (compatible con LangChain 1.x).
 Drivers síncronos (psycopg2 + redis-py) para evitar conflictos de event loop.
 """
 import json
+import time
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
@@ -347,10 +348,56 @@ def build_agent(api_key: str, provider: str, model: str):
     return {"llm": llm_with_tools, "system_msg": system_msg}
 
 
-def invoke_agent(agent_state: dict, user_message: str) -> dict[str, Any]:
+def _record_usage(
+    agent_state: dict,
+    user_message: str,
+    result: dict,
+    latency_ms: int,
+    user_id: int | None,
+    agent_type: str,
+) -> None:
+    """Inserta una fila en ai_usage_log (síncrono, falla silenciosamente)."""
+    try:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        from models.ai_usage import AIUsageLog
+
+        engine = create_engine(_SYNC_URL, pool_pre_ping=True)
+        try:
+            with Session(engine) as session:
+                model_name = getattr(agent_state["llm"], "model", "unknown")
+                usage_meta = result.get("usage_metadata") or {}
+                log = AIUsageLog(
+                    user_id=user_id,
+                    agent_type=agent_type,
+                    model=str(model_name),
+                    tokens_input=usage_meta.get("input_tokens", 0),
+                    tokens_output=usage_meta.get("output_tokens", 0),
+                    latency_ms=latency_ms,
+                    tool_calls_count=len(result.get("tool_calls_log", [])),
+                    query_preview=user_message[:200],
+                )
+                session.add(log)
+                session.commit()
+        finally:
+            engine.dispose()
+    except Exception as exc:
+        logger.warning("No se pudo registrar ai_usage_log", extra={"error": str(exc)})
+
+
+def invoke_agent(
+    agent_state: dict,
+    user_message: str,
+    user_id: int | None = None,
+    agent_type: str = "integrador",
+) -> dict[str, Any]:
     """Invoca el agente con el mensaje del usuario. Retorna output y tool_calls."""
     messages = [
         SystemMessage(content=agent_state["system_msg"]),
         HumanMessage(content=user_message),
     ]
-    return _run_agent_loop(agent_state["llm"], messages)
+    t0 = time.time()
+    result = _run_agent_loop(agent_state["llm"], messages)
+    latency_ms = int((time.time() - t0) * 1000)
+    _record_usage(agent_state, user_message, result, latency_ms, user_id, agent_type)
+    return result

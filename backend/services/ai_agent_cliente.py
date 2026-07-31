@@ -5,6 +5,7 @@ Asiste al operador en monitoreo y operación. Solo lectura + reconocimiento de a
 No tiene acceso a herramientas de construcción (write_point, create_logic_script, etc).
 """
 import json
+import time
 from typing import Any
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
@@ -279,3 +280,50 @@ def build_agent(api_key: str, provider: str, model: str) -> AgentExecutor:
 
     agent = create_tool_calling_agent(llm, _TOOLS, prompt)
     return AgentExecutor(agent=agent, tools=_TOOLS, verbose=False, max_iterations=5)
+
+
+def invoke_agent(
+    agent_state: AgentExecutor,
+    user_message: str,
+    user_id: int | None = None,
+    agent_type: str = "cliente",
+) -> dict[str, Any]:
+    """Invoca el AgentExecutor y registra el uso en ai_usage_log."""
+    t0 = time.time()
+    result = agent_state.invoke({"input": user_message})
+    latency_ms = int((time.time() - t0) * 1000)
+
+    output = result.get("output", "")
+    intermediate = result.get("intermediate_steps", [])
+    tool_calls_log = [
+        {"tool": step[0].tool, "input": step[0].tool_input, "output": str(step[1])}
+        for step in intermediate
+        if hasattr(step[0], "tool")
+    ]
+
+    try:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        from models.ai_usage import AIUsageLog
+
+        engine = create_engine(settings.sync_database_url, pool_pre_ping=True)
+        try:
+            with Session(engine) as session:
+                log = AIUsageLog(
+                    user_id=user_id,
+                    agent_type=agent_type,
+                    model="unknown",
+                    tokens_input=0,
+                    tokens_output=0,
+                    latency_ms=latency_ms,
+                    tool_calls_count=len(tool_calls_log),
+                    query_preview=user_message[:200],
+                )
+                session.add(log)
+                session.commit()
+        finally:
+            engine.dispose()
+    except Exception as exc:
+        logger.warning("No se pudo registrar ai_usage_log", extra={"error": str(exc)})
+
+    return {"output": output, "tool_calls_log": tool_calls_log}

@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 from fastapi import FastAPI, Request
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
@@ -23,6 +24,7 @@ from routers.areas import router as areas_router
 from routers.history import router as history_router
 from routers.logic import router as logic_router
 from routers.ai import router as ai_router
+from routers.ai_usage import router as ai_usage_router
 from routers.system import router as system_router
 from routers.notifications import router as notifications_router
 from routers.tests import router as tests_router
@@ -211,6 +213,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+Instrumentator().instrument(app).expose(app)
+
 # ── Middlewares ────────────────────────────────────────────────────────────
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(
@@ -243,6 +247,7 @@ app.include_router(docs_router, prefix="/api/v1")
 app.include_router(rag_router, prefix="/api/v1")
 app.include_router(mimics_router, prefix="/api/v1")
 app.include_router(project_router, prefix="/api/v1")
+app.include_router(ai_usage_router, prefix="/api/v1")
 app.include_router(ws_router)
 
 
