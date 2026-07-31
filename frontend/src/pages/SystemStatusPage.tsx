@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 
 const API = '/api/v1'
 
@@ -27,6 +27,22 @@ interface AIUsageTotals {
 interface AIUsageData {
   logs: AIUsageLogEntry[]
   totals: AIUsageTotals
+}
+
+interface BackupEntry {
+  id: number
+  filename: string
+  size_bytes: number | null
+  status: 'success' | 'failed'
+  error_message: string | null
+  created_at: string
+}
+
+function formatBytes(bytes: number | null): string {
+  if (bytes == null) return '—'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 interface ComponentStatus {
@@ -132,8 +148,19 @@ export default function SystemStatusPage() {
   const [health, setHealth] = useState<HealthData | null>(null)
   const [events, setEvents] = useState<SystemEvent[]>([])
   const [aiUsage, setAiUsage] = useState<AIUsageData | null>(null)
+  const [backups, setBackups] = useState<BackupEntry[]>([])
+  const [backupRunning, setBackupRunning] = useState(false)
+  const [backupToast, setBackupToast] = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const fetchBackups = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/backups/`, { headers: authHeaders() })
+      if (res.ok) setBackups(await res.json())
+    } catch { /* silencioso */ }
+  }, [])
 
   const fetchData = useCallback(async () => {
     try {
@@ -147,12 +174,8 @@ export default function SystemStatusPage() {
         setHealth(data)
         setLastUpdate(new Date().toLocaleTimeString())
       }
-      if (eRes.ok) {
-        setEvents(await eRes.json())
-      }
-      if (aiRes.ok) {
-        setAiUsage(await aiRes.json())
-      }
+      if (eRes.ok) setEvents(await eRes.json())
+      if (aiRes.ok) setAiUsage(await aiRes.json())
     } catch {
       // silencioso
     } finally {
@@ -160,11 +183,48 @@ export default function SystemStatusPage() {
     }
   }, [])
 
+  const handleRunBackup = async () => {
+    if (backupRunning) return
+    setBackupRunning(true)
+    try {
+      const res = await fetch(`${API}/backups/run`, {
+        method: 'POST',
+        headers: authHeaders(),
+      })
+      if (res.ok) {
+        setBackupToast('Backup iniciado. El historial se actualizará en unos segundos.')
+        if (toastTimer.current) clearTimeout(toastTimer.current)
+        toastTimer.current = setTimeout(async () => {
+          await fetchBackups()
+          setBackupToast(null)
+        }, 5000)
+      }
+    } catch { /* silencioso */ }
+    finally { setBackupRunning(false) }
+  }
+
+  const handleDownloadBackup = (backup: BackupEntry) => {
+    const a = document.createElement('a')
+    a.href = `${API}/backups/${backup.id}/download`
+    a.download = backup.filename
+    const token = localStorage.getItem('hira-token') ?? ''
+    // Descarga con token via fetch + blob
+    fetch(a.href, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob)
+        a.href = url
+        a.click()
+        URL.revokeObjectURL(url)
+      })
+  }
+
   useEffect(() => {
     fetchData()
+    fetchBackups()
     const interval = setInterval(fetchData, 30_000)
     return () => clearInterval(interval)
-  }, [fetchData])
+  }, [fetchData, fetchBackups])
 
   if (loading) {
     return <div style={{ color: 'var(--text-secondary)', padding: 24 }}>Cargando estado del sistema…</div>
@@ -324,6 +384,128 @@ export default function SystemStatusPage() {
                 </div>
               </div>
             ))
+          )}
+        </div>
+      </div>
+
+      {/* Backups */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <h3 style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--text-primary)' }}>
+            Backups de Base de Datos
+          </h3>
+          <button
+            onClick={handleRunBackup}
+            disabled={backupRunning}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-default)',
+              background: backupRunning ? 'var(--bg-elevated)' : 'var(--md-sys-color-primary)',
+              color: backupRunning ? 'var(--text-muted)' : 'var(--md-sys-color-on-primary)',
+              fontSize: 'var(--text-sm)',
+              fontWeight: 600,
+              cursor: backupRunning ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {backupRunning ? 'Iniciando…' : 'Ejecutar Backup Ahora'}
+          </button>
+        </div>
+
+        {backupToast && (
+          <div style={{
+            marginBottom: 10,
+            padding: '8px 14px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--success-subtle)',
+            color: 'var(--success)',
+            fontSize: 'var(--text-sm)',
+            fontWeight: 500,
+          }}>
+            {backupToast}
+          </div>
+        )}
+
+        {backups.length > 0 && (
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginBottom: 8 }}>
+            Último backup exitoso:{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>
+              {(() => {
+                const last = backups.find(b => b.status === 'success')
+                return last ? new Date(last.created_at).toLocaleString() : 'ninguno'
+              })()}
+            </strong>
+          </div>
+        )}
+
+        <div style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-lg)',
+          overflow: 'hidden',
+        }}>
+          {backups.length === 0 ? (
+            <div style={{ padding: '14px 16px', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+              Sin backups registrados
+            </div>
+          ) : (
+            <>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '160px 1fr 80px 60px',
+                gap: 8,
+                padding: '8px 16px',
+                borderBottom: '1px solid var(--border-default)',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}>
+                <span>Fecha/Hora</span>
+                <span>Archivo</span>
+                <span>Tamaño</span>
+                <span>Estado</span>
+              </div>
+              {backups.map(backup => (
+                <div
+                  key={backup.id}
+                  onClick={() => backup.status === 'success' && handleDownloadBackup(backup)}
+                  title={backup.status === 'failed' ? (backup.error_message ?? 'Error desconocido') : 'Click para descargar'}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '160px 1fr 80px 60px',
+                    gap: 8,
+                    padding: '8px 16px',
+                    borderBottom: '1px solid var(--border-subtle)',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--text-secondary)',
+                    alignItems: 'center',
+                    cursor: backup.status === 'success' ? 'pointer' : 'default',
+                  }}
+                >
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                    {new Date(backup.created_at).toLocaleString()}
+                  </span>
+                  <span style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    color: backup.status === 'success' ? 'var(--md-sys-color-primary)' : 'var(--text-muted)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 11,
+                  }}>
+                    {backup.filename}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {formatBytes(backup.size_bytes)}
+                  </span>
+                  <span style={{ fontSize: 16 }}>
+                    {backup.status === 'success' ? '✅' : '❌'}
+                  </span>
+                </div>
+              ))}
+            </>
           )}
         </div>
       </div>
