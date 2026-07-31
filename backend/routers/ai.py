@@ -48,7 +48,7 @@ def _validate_config(body: AIConfigUpdate) -> None:
         raise HTTPException(status_code=422, detail="La API key no puede estar vacía")
 
 
-async def _invoke_agent(agent_type: str, message: str) -> dict[str, Any]:
+async def _invoke_agent(agent_type: str, message: str, user_id: int | None = None) -> dict[str, Any]:
     from services.ai_config_service import get_config, get_decrypted_key
 
     config = get_config(agent_type)
@@ -63,12 +63,12 @@ async def _invoke_agent(agent_type: str, message: str) -> dict[str, Any]:
         raise HTTPException(status_code=422, detail="Error al descifrar la API key.")
 
     if agent_type == "integrador":
-        from services.ai_agent import build_agent
+        from services.ai_agent import build_agent, invoke_agent
     else:
-        from services.ai_agent_cliente import build_agent
+        from services.ai_agent_cliente import build_agent, invoke_agent
 
     try:
-        agent = build_agent(api_key, config["provider"], config["model"])
+        agent_state = build_agent(api_key, config["provider"], config["model"])
     except Exception as exc:
         logger.error("Error al construir agente", extra={"error": str(exc), "agent_type": agent_type})
         raise HTTPException(status_code=500, detail=f"Error al inicializar el agente: {exc}")
@@ -76,7 +76,8 @@ async def _invoke_agent(agent_type: str, message: str) -> dict[str, Any]:
     try:
         result = await asyncio.wait_for(
             asyncio.get_event_loop().run_in_executor(
-                None, lambda: agent.invoke({"input": message})
+                None,
+                lambda: invoke_agent(agent_state, message, user_id=user_id, agent_type=agent_type),
             ),
             timeout=30.0,
         )
@@ -87,11 +88,7 @@ async def _invoke_agent(agent_type: str, message: str) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Error del agente: {exc}")
 
     reply = result.get("output", "")
-    intermediate = result.get("intermediate_steps", [])
-    tool_calls = [
-        {"tool": step[0].tool, "input": step[0].tool_input, "output": str(step[1])}
-        for step in intermediate if hasattr(step[0], "tool")
-    ] if intermediate else None
+    tool_calls = result.get("tool_calls_log") or None
 
     return {"reply": reply, "tool_calls": tool_calls}
 

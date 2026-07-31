@@ -3051,6 +3051,32 @@ paths:
         "403":
           description: Sin permiso config:write
 
+  /api/v1/ai-usage/:
+    get:
+      summary: Listar invocaciones del Agente IA con totales
+      tags: [AI Usage]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Logs e invocaciones + totales acumulados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIUsageResponse'
+        "401":
+          description: No autenticado
+        "403":
+          description: Sin permiso logic:read (solo Admin)
+
 components:
   securitySchemes:
     BearerAuth:
@@ -5073,3 +5099,33 @@ components:
           type: array
           items:
             type: string
+
+    AIUsageLog:
+      type: object
+      properties:
+        id: {type: integer}
+        timestamp: {type: string, format: date-time}
+        agent_type: {type: string}
+        model: {type: string}
+        tokens_input: {type: integer}
+        tokens_output: {type: integer}
+        latency_ms: {type: integer}
+        tool_calls_count: {type: integer}
+        query_preview: {type: string, nullable: true}
+
+    AIUsageTotals:
+      type: object
+      properties:
+        requests: {type: integer}
+        tokens: {type: integer}
+        estimated_cost_usd: {type: number}
+
+    AIUsageResponse:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIUsageLog'
+        totals:
+          $ref: '#/components/schemas/AIUsageTotals'
