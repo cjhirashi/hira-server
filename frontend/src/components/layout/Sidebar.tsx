@@ -184,38 +184,50 @@ export default function Sidebar() {
 
       {/* Nav */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-        {/* SCADA Operativo — visible para todos */}
-        <SectionLabel label="SCADA Operativo" />
         <NavItem to="/dashboard" label="Dashboard" Icon={LayoutDashboard} />
-        <NavItem to="/alarms" label="Alarmas" Icon={Bell} badge />
-        <NavItem to="/history" label="Históricos" Icon={BarChart2} />
-        <NavItem to="/analysis" label="Análisis" Icon={BarChart3} />
-        {operadorOrAdmin && (
-          <NavItem to="/manual" label="Manual" Icon={FileText} />
-        )}
-        {operadorOrAdmin && (
-          <NavItem to="/ai/cliente" label="AI Asistente" Icon={Sparkles} />
-        )}
-        {operadorOrAdmin && (
-          <NavItem to="/mimics" label="Mimics" Icon={LayoutTemplate} />
-        )}
-        {operadorOrAdmin && (
-          <NavItem to="/system/status" label="Estado del Sistema" Icon={Activity} />
-        )}
 
-        {/* Hira Studio — solo Admin */}
-        {adminUser && (
+        {mode === 'studio' ? (
+          /* ── Hira Studio: navegación de ingeniería ── */
           <>
             <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '8px 0 4px' }} />
             <SectionLabel label="Hira Studio" icon={Wrench} />
-            <NavItem to="/studio/dashboard" label="Panel de Ingeniería" Icon={LayoutDashboard} />
             <NavItem to="/config" label="Configuración" Icon={Settings} />
             <NavItem to="/logic" label="Lógica" Icon={Code2} />
-            <NavItem to="/ai/integrador" label="AI Integrador" Icon={Sparkles} />
-            <NavItem to="/studio/notifications" label="Notificaciones" Icon={Bell} />
-            <NavItem to="/tests" label="Pruebas" Icon={FlaskConical} />
             <NavItem to="/studio/mimics" label="Mimics" Icon={LayoutTemplate} />
+            <NavItem to="/tests" label="Pruebas" Icon={FlaskConical} />
             <NavItem to="/docs" label="Documentación" Icon={BookOpen} />
+            <NavItem to="/ai/integrador" label="AI Integrador" Icon={Sparkles} />
+            {adminUser && (
+              <NavItem to="/studio/notifications" label="Notificaciones" Icon={Bell} />
+            )}
+          </>
+        ) : (
+          /* ── Hira Server: navegación operativa ── */
+          <>
+            <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '8px 0 4px' }} />
+            <SectionLabel label="SCADA Operativo" />
+            <NavItem to="/alarms" label="Alarmas" Icon={Bell} badge />
+            <NavItem to="/history" label="Históricos" Icon={BarChart2} />
+            <NavItem to="/analysis" label="Análisis" Icon={BarChart3} />
+            {operadorOrAdmin && <NavItem to="/mimics" label="Mimics" Icon={LayoutTemplate} />}
+            {operadorOrAdmin && <NavItem to="/manual" label="Manual" Icon={FileText} />}
+            {operadorOrAdmin && <NavItem to="/ai/cliente" label="AI Asistente" Icon={Sparkles} />}
+            {operadorOrAdmin && <NavItem to="/system/status" label="Estado del Sistema" Icon={Activity} />}
+
+            {/* Hira Studio — solo Admin en modo Server */}
+            {adminUser && (
+              <>
+                <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '8px 0 4px' }} />
+                <SectionLabel label="Hira Studio" icon={Wrench} />
+                <NavItem to="/config" label="Configuración" Icon={Settings} />
+                <NavItem to="/logic" label="Lógica" Icon={Code2} />
+                <NavItem to="/studio/mimics" label="Mimics" Icon={LayoutTemplate} />
+                <NavItem to="/ai/integrador" label="AI Integrador" Icon={Sparkles} />
+                <NavItem to="/studio/notifications" label="Notificaciones" Icon={Bell} />
+                <NavItem to="/tests" label="Pruebas" Icon={FlaskConical} />
+                <NavItem to="/docs" label="Documentación" Icon={BookOpen} />
+              </>
+            )}
           </>
         )}
       </div>

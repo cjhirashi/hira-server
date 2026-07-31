@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Shell from './components/layout/Shell'
 import LoginPage from './components/auth/LoginPage'
 import { DashboardPage } from './components/dashboard/DashboardPage'
+import { useSystemStore } from './store/systemStore'
 import { AlarmsPage } from './components/alarms/AlarmsPage'
 import HistoryPage from './components/historicals/HistoryPage'
 import ConfigPage from './components/config/ConfigPage'
@@ -42,6 +43,13 @@ function OperadorRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+/** Renderiza el dashboard según el modo de deploy: Studio → ingeniería, Server → operaciones. */
+function DashboardRouter() {
+  const mode = useSystemStore(s => s.mode)
+  if (mode === 'studio') return <StudioDashboard />
+  return <DashboardPage />
+}
+
 export default function App() {
   useEffect(() => {
     const stored = localStorage.getItem('hira-theme')
@@ -63,7 +71,7 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="dashboard" element={<DashboardRouter />} />
           <Route path="alarms" element={<AlarmsPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="config" element={<AdminRoute><ConfigPage /></AdminRoute>} />
