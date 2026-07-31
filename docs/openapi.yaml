@@ -3077,6 +3077,81 @@ paths:
         "403":
           description: Sin permiso logic:read (solo Admin)
 
+  /api/v1/engineering-sessions/:
+    post:
+      summary: Abrir sesión de ingeniería remota
+      tags: [Engineering Sessions]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: notes
+          in: query
+          schema: {type: string, maxLength: 500}
+      responses:
+        "201":
+          description: Sesión creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineeringSessionCreated"
+        "409":
+          description: Ya existe una sesión activa
+        "403":
+          description: Sin permiso config:write (Admin)
+
+  /api/v1/engineering-sessions/active:
+    get:
+      summary: Obtener sesión de ingeniería activa
+      tags: [Engineering Sessions]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Sesión activa o null
+          content:
+            application/json:
+              schema:
+                nullable: true
+                $ref: "#/components/schemas/ActiveEngineeringSession"
+
+  /api/v1/engineering-sessions/{session_id}/heartbeat:
+    post:
+      summary: Renovar heartbeat de sesión
+      tags: [Engineering Sessions]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        "200":
+          description: Heartbeat renovado
+        "403":
+          description: Solo el engineer que abrió la sesión puede enviar heartbeat
+        "404":
+          description: Sesión no encontrada o no activa
+
+  /api/v1/engineering-sessions/{session_id}/close:
+    post:
+      summary: Cerrar sesión de ingeniería
+      tags: [Engineering Sessions]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        "200":
+          description: Sesión cerrada
+        "403":
+          description: Sin permisos para cerrar esta sesión
+        "404":
+          description: Sesión no encontrada o no activa
+
 components:
   securitySchemes:
     BearerAuth:
@@ -5129,3 +5204,21 @@ components:
             $ref: '#/components/schemas/AIUsageLog'
         totals:
           $ref: '#/components/schemas/AIUsageTotals'
+
+    EngineeringSessionCreated:
+      type: object
+      properties:
+        session_id: {type: integer}
+        session_token: {type: string}
+        expires_at: {type: string, format: date-time}
+
+    ActiveEngineeringSession:
+      type: object
+      nullable: true
+      properties:
+        session_id: {type: integer}
+        engineer_user_id: {type: integer}
+        engineer_name: {type: string}
+        started_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+        last_heartbeat_at: {type: string, format: date-time}

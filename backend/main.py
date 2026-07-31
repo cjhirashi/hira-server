@@ -25,6 +25,7 @@ from routers.history import router as history_router
 from routers.logic import router as logic_router
 from routers.ai import router as ai_router
 from routers.ai_usage import router as ai_usage_router
+from routers.engineering_sessions import router as engineering_sessions_router
 from routers.system import router as system_router
 from routers.notifications import router as notifications_router
 from routers.tests import router as tests_router
@@ -248,6 +249,7 @@ app.include_router(rag_router, prefix="/api/v1")
 app.include_router(mimics_router, prefix="/api/v1")
 app.include_router(project_router, prefix="/api/v1")
 app.include_router(ai_usage_router, prefix="/api/v1")
+app.include_router(engineering_sessions_router, prefix="/api/v1")
 app.include_router(ws_router)
 
 
