@@ -15,6 +15,7 @@ celery_app = Celery(
         "workers.monitor_worker",
         "workers.test_worker",
         "workers.modbus_poller",
+        "workers.engineering_session_tasks",
     ],
 )
 
@@ -49,6 +50,11 @@ celery_app.conf.update(
             "task": "workers.modbus_poller.poll_all_modbus_devices",
             "schedule": 10.0,
             "options": {"queue": "protocols"},
+        },
+        "expire-engineering-sessions": {
+            "task": "workers.engineering_session_tasks.expire_engineering_sessions",
+            "schedule": 30.0,
+            "options": {"queue": "normal"},
         },
     },
 )
