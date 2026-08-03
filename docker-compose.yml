@@ -134,6 +134,8 @@ services:
     environment:
       - HIRA_DEPLOY_MODE=${HIRA_DEPLOY_MODE:-server}
       - PYTHONPATH=/app
+    volumes:
+      - backups_data:/backups
     depends_on:
       redis:
         condition: service_healthy

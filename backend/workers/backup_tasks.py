@@ -63,7 +63,7 @@ async def _run_backup_async() -> str:
         _cleanup_old_backups()
         logger.info(
             "Backup completado",
-            extra={"filename": filename, "size_bytes": size_bytes},
+            extra={"backup_filename": filename, "size_bytes": size_bytes},
         )
 
     except Exception as exc:
@@ -75,7 +75,7 @@ async def _run_backup_async() -> str:
         )
         if backup_path.exists():
             backup_path.unlink()
-        logger.error("Backup fallido", extra={"filename": filename, "error": error_msg})
+        logger.error("Backup fallido", extra={"backup_filename": filename, "error": error_msg})
 
     adapter = get_db_adapter()
     async with adapter.get_session() as session:
