@@ -2,6 +2,9 @@
 CLAUDE.md
 DEVIATIONS.md
 
+# Agentes de proyecto (definiciones locales — no van al repo)
+.claude/agents/
+
 # Variables de entorno con secrets
 .env
 .env.local
