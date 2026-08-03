@@ -19,10 +19,11 @@ const navItemBase: React.CSSProperties = {
   fontSize: 'var(--text-sm)',
   fontWeight: 500,
   cursor: 'pointer',
-  transition: 'background 120ms, color 120ms',
+  transition: 'background 150ms, color 150ms, box-shadow 150ms',
   border: 'none',
   width: 'calc(100% - 16px)',
   background: 'transparent',
+  letterSpacing: '0.01em',
 }
 
 function NavItem({ to, label, Icon, badge }: { to: string; label: string; Icon: LucideIcon; badge?: boolean }) {
@@ -36,6 +37,7 @@ function NavItem({ to, label, Icon, badge }: { to: string; label: string; Icon: 
         background: isActive ? 'var(--accent-subtle)' : 'transparent',
         borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
         paddingLeft: isActive ? 10 : 12,
+        boxShadow: isActive ? 'inset 0 0 12px var(--accent-glow)' : 'none',
       })}
       onMouseEnter={e => {
         const el = e.currentTarget
@@ -94,7 +96,7 @@ function SectionLabel({ label, icon: Icon }: { label: string; icon?: LucideIcon 
 
 export default function Sidebar() {
   const navigate = useNavigate()
-  const { email, isAdmin, isOperador, logout } = useAuthStore()
+  const { email, isAdmin, isOperador, hasRole, logout } = useAuthStore()
   const { mode, dbType, fetchMode } = useSystemStore()
 
   useEffect(() => { fetchMode() }, [fetchMode])
@@ -106,6 +108,7 @@ export default function Sidebar() {
 
   const adminUser = isAdmin()
   const operadorOrAdmin = isOperador()
+  const integradorUser = hasRole('Integrador')
 
   return (
     <nav style={{
@@ -113,11 +116,12 @@ export default function Sidebar() {
       minWidth: 'var(--sidebar-width)',
       height: '100vh',
       background: 'var(--bg-surface)',
-      borderRight: '1px solid var(--border-subtle)',
+      borderRight: '1px solid var(--border-default)',
       display: 'flex',
       flexDirection: 'column',
       flexShrink: 0,
       overflow: 'hidden',
+      boxShadow: '2px 0 20px rgba(0,0,0,0.4)',
     }}>
       {/* Logo */}
       <div style={{
@@ -126,15 +130,16 @@ export default function Sidebar() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            width: 30,
-            height: 30,
+            width: 32,
+            height: 32,
             borderRadius: 'var(--radius-md)',
             background: 'var(--accent-subtle)',
-            border: '1px solid var(--accent)',
+            border: '1px solid var(--border-glow)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
+            boxShadow: '0 0 14px var(--accent-glow)',
           }}>
             <Zap size={16} color="var(--accent)" strokeWidth={2.5} />
           </div>
@@ -184,52 +189,42 @@ export default function Sidebar() {
 
       {/* Nav */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+
+        {/* ── Operaciones — todos los usuarios ── */}
         <NavItem to="/dashboard" label="Dashboard" Icon={LayoutDashboard} />
+        <NavItem to="/alarms" label="Alarmas" Icon={Bell} badge />
+        <NavItem to="/history" label="Históricos" Icon={BarChart2} />
+        <NavItem to="/mimics" label="Mimics" Icon={LayoutTemplate} />
+        <NavItem to="/analysis" label="Análisis" Icon={BarChart3} />
+        <NavItem to="/manual" label="Manual" Icon={FileText} />
+        <NavItem to="/docs" label="Documentación" Icon={BookOpen} />
 
-        {mode === 'studio' ? (
-          /* ── Hira Studio: navegación de ingeniería ── */
-          <>
-            <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '8px 0 4px' }} />
-            <SectionLabel label="Hira Studio" icon={Wrench} />
-            <NavItem to="/config" label="Configuración" Icon={Settings} />
-            <NavItem to="/logic" label="Lógica" Icon={Code2} />
-            <NavItem to="/studio/mimics" label="Mimics" Icon={LayoutTemplate} />
-            <NavItem to="/tests" label="Pruebas" Icon={FlaskConical} />
-            <NavItem to="/docs" label="Documentación" Icon={BookOpen} />
-            <NavItem to="/ai/integrador" label="AI Integrador" Icon={Sparkles} />
-            {adminUser && (
-              <NavItem to="/studio/notifications" label="Notificaciones" Icon={Bell} />
-            )}
-          </>
-        ) : (
-          /* ── Hira Server: navegación operativa ── */
-          <>
-            <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '8px 0 4px' }} />
-            <SectionLabel label="SCADA Operativo" />
-            <NavItem to="/alarms" label="Alarmas" Icon={Bell} badge />
-            <NavItem to="/history" label="Históricos" Icon={BarChart2} />
-            <NavItem to="/analysis" label="Análisis" Icon={BarChart3} />
-            {operadorOrAdmin && <NavItem to="/mimics" label="Mimics" Icon={LayoutTemplate} />}
-            {operadorOrAdmin && <NavItem to="/manual" label="Manual" Icon={FileText} />}
-            {operadorOrAdmin && <NavItem to="/ai/cliente" label="AI Asistente" Icon={Sparkles} />}
-            {operadorOrAdmin && <NavItem to="/system/status" label="Estado del Sistema" Icon={Activity} />}
+        {/* ── IA ── */}
+        <NavItem to="/ai/cliente" label="AI Asistente" Icon={Sparkles} />
+        {integradorUser && <NavItem to="/ai/integrador" label="AI Integrador" Icon={Wrench} />}
 
-            {/* Hira Studio — solo Admin en modo Server */}
-            {adminUser && (
-              <>
-                <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '8px 0 4px' }} />
-                <SectionLabel label="Hira Studio" icon={Wrench} />
-                <NavItem to="/config" label="Configuración" Icon={Settings} />
-                <NavItem to="/logic" label="Lógica" Icon={Code2} />
-                <NavItem to="/studio/mimics" label="Mimics" Icon={LayoutTemplate} />
-                <NavItem to="/ai/integrador" label="AI Integrador" Icon={Sparkles} />
-                <NavItem to="/studio/notifications" label="Notificaciones" Icon={Bell} />
-                <NavItem to="/tests" label="Pruebas" Icon={FlaskConical} />
-                <NavItem to="/docs" label="Documentación" Icon={BookOpen} />
-              </>
-            )}
+        <NavItem to="/system/status" label="Estado del Sistema" Icon={Activity} />
+
+        {/* ── Ingeniería — Integrador ── */}
+        {integradorUser && (
+          <>
+            <SectionLabel label="Ingeniería" icon={Code2} />
+            <NavItem to="/logic" label="Motor de Lógica" Icon={Code2} />
+            <NavItem to="/tests" label="Motor de Pruebas" Icon={FlaskConical} />
           </>
         )}
+
+        {/* ── Studio — Admin / Integrador ── */}
+        {(adminUser || integradorUser) && (
+          <>
+            <SectionLabel label="Studio" icon={Settings} />
+            <NavItem to="/config" label="Configurador" Icon={Settings} />
+            <NavItem to="/studio/dashboard" label="Studio Dashboard" Icon={LayoutDashboard} />
+            <NavItem to="/studio/mimics" label="Studio Mimics" Icon={LayoutTemplate} />
+            <NavItem to="/studio/notifications" label="Notificaciones" Icon={Activity} />
+          </>
+        )}
+
       </div>
 
       {/* Footer */}
