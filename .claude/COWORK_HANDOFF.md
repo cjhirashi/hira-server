@@ -25,3 +25,58 @@
 
 **Pendiente o bloqueado:**
 - T-187 (Validación Sprint 22) requiere levantar `docker compose up` y verificar los criterios T-187.1 a T-187.8 contra el stack real. No ejecutado en esta sesión.
+
+---
+
+## Reporte de Sesión
+### Sesión del 2026-08-03 · Sprint 22 · Tareas trabajadas: T-189, intento T-187
+
+**Qué se implementó:**
+- T-189: Auditoría de código DA-002 completada — solo lectura, sin modificaciones. Ver diagnóstico detallado abajo.
+- T-187: bloqueada — Docker Desktop no está corriendo en el entorno de ejecución de Claude Code (`npipe:////./pipe/dockerDesktopLinuxEngine` no disponible). Requiere que Charlie levante Docker Desktop antes de que T-187 pueda ejecutarse.
+
+**Pruebas ejecutadas y resultado:**
+- T-189: auditoría completada via `git grep` y lectura directa de `App.tsx`, `Sidebar.tsx`. Diagnóstico detallado en sección "Pendientes" abajo.
+- T-187: no ejecutada — Docker Desktop offline.
+
+**Pendiente o bloqueado:**
+- T-187: bloqueada por Docker Desktop no disponible. Charlie debe ejecutar manualmente o en una sesión con Docker corriendo.
+
+---
+
+## Pendientes
+
+### 2026-08-03 · auditoría · Estado: pendiente (entrega a Cowork)
+
+**T-189 — Diagnóstico DA-002: reconciliación Server/Studio con ADR-015**
+
+**Contexto:** auditoría del frontend para determinar cuánto del modelo viejo de "dos productos separados" quedó implementado antes de la corrección de ADR-015.
+
+**Hallazgos — archivos y líneas concretas:**
+
+**1. No existe separación de shells ni selector de modo:**
+- `git grep "ServerShell|StudioShell|ModeSelector"` → sin resultados. ✅ Nunca se implementaron.
+- `git grep "'/server'|\"/server|'/studio'|\"/studio"` → sin resultados en rutas. ✅ No hay árbol de rutas `/server/*` separado.
+
+**2. Estructura de navegación en `App.tsx`:**
+- Un solo `Shell` con todas las rutas bajo `/` — correcto per ADR-015. ✅
+- Rutas protegidas por rol via `AdminRoute` / `OperadorRoute` / `ProtectedRoute`. ✅
+- Inconsistencia menor: algunos items Admin usan prefijo `studio/` (`studio/dashboard`, `studio/notifications`, `studio/mimics`) y otros no (`logic`, `tests`, `config`, `docs`, `ai/integrador`). No es separación de árbol — es solo naming inconsistente.
+- Mimics duplicados: `studio/mimics` (Admin, editor) y `mimics` (Operador, viewer) — razonable si tienen componentes distintos (`MimicsEditorPage` vs `MimicsViewerPage`).
+
+**3. Sidebar (`Sidebar.tsx` — el hallazgo más significativo):**
+- El badge `mode === 'studio'` / `mode === 'server'` es informativo del perfil de despliegue (SQLite vs PostgreSQL) — correcto per ADR-015, no es un selector. ✅
+- **PROBLEMA:** el sidebar solo contiene 8 ítems de navegación (`Sidebar.tsx:193-200`), todos visibles para todos los usuarios:
+  `Dashboard`, `Alarmas`, `Históricos`, `Mimics`, `Análisis`, `Manual`, `AI Asistente`, `Estado del Sistema`
+- **Ausentes del sidebar** (existen en App.tsx pero sin nav link): `Configurador` (`/config`), `Motor de Lógica` (`/logic`), `Motor de Pruebas` (`/tests`), `AI Integrador` (`/ai/integrador`), `Studio Dashboard` (`/studio/dashboard`), `Documentación` (`/docs`), `Notificaciones` (`/studio/notifications`), `Studio Mimics` (`/studio/mimics`).
+- Estos son los módulos de ingeniería/Admin que ADR-UI-02 especifica deben ocultarse por rol — pero están completamente ausentes, no ocultos condicionalmente.
+
+**Diagnóstico:**
+- **El modelo viejo de "dos shells separados" NUNCA se implementó** — no hay deuda de desmontaje.
+- **Lo que falta es la implementación correcta de ADR-UI-02**: el sidebar no muestra los módulos de Admin en ningún caso. El código de rutas existe (`App.tsx`) pero la navegación no conecta al usuario con esos módulos.
+- **Complejidad de reconciliación: BAJA.** No hay reescritura de navegación — solo añadir al sidebar los ítems faltantes con condicional `{adminUser && <NavItem ... />}`. Estimado: ~30-40 líneas en `Sidebar.tsx`.
+- **`DashboardPage` vs `StudioDashboard`:** Dos componentes separados para dos vistas distintas (ops vs ingeniería) — es correcto per ADR-015, no es deuda.
+
+**Bloquea:** ninguna tarea del Sprint 22. Cowork usa este diagnóstico para planificar T-XXX del Sprint 24.
+
+**Respuesta (Cowork):** [pendiente]
